@@ -11,7 +11,7 @@ INSTALL_DIR="$HOME/cvmrdma-install"
 BR="$INSTALL_DIR/br-cvm"
 shift;
 
-MAKE="make -j16 -C ../ibverbs-buildroot O=$BR"
+MAKE="make -C $BR"
 for TARGET in $@; do
   set -x
   $MAKE $TARGET-rebuild

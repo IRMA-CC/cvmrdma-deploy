@@ -32,6 +32,8 @@ if [[ -d "$DEST" ]]; then
     rm -r "$DEST" || { echo "Removing old toolchain failed."; exit 1; }
 fi
 
+
+mkdir -p $INSTALL_DIR
 mv "$TMP" "$DEST" &&
 cd "$DEST" &&
 ./relocate-sdk.sh
