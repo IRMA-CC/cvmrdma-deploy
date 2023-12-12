@@ -38,6 +38,7 @@ cp "$EDK2_VARS" ./ovmf_vars.fd
 #    function 1: PVRDMA
 # (this is necessary s.t. PVRDMA finds the VMXNET3 device)
 
+# Put the virtio-disk and virtio-net on a PCIe slot
 
 
 
@@ -47,13 +48,10 @@ sudo env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -nographic \
   -display none \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
+  -device pcie-root-port,chassis=2,id=pcie.2,addr=1c.1 \
   -drive if=pflash,format=raw,unit=0,file=$EDK2_CODE,readonly=on \
   -drive if=pflash,format=raw,unit=1,file=ovmf_vars.fd \
   -drive format=qcow2,id=hda,if=none,file=disk.qcow2 \
-  -device virtio-blk-pci,scsi=off,bus=pcie.1,addr=0x0,drive=hda,bootindex=1 \
+  -device virtio-blk-pci,scsi=off,bus=pcie.1,drive=hda,bootindex=1 \
   -netdev tap,id=hostnet0,vhost=on,ifname=tap0-cvm,script=no,downscript=no \
-  -device vmxnet3,netdev=hostnet0,mac=00:11:22:33:44:55,id=net0,addr=10.0,multifunction=on \
-  -object memory-backend-ram,id=mb1,size=2G,share=on \
-  -numa node,memdev=mb1 \
-  -chardev socket,path=$MAD_CHARDEV,id=mads \
-  -device pvrdma,ibdev=$IBDEV,ibport=1,netdev=$HOST_IFACE,mad-chardev=mads,addr=10.1
+  -device virtio-net-pci,netdev=hostnet0,id=net0,bus=pcie.2
