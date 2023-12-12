@@ -10,7 +10,7 @@ include(ExternalProject)
 
 ExternalProject_Add(rdma-core
   SOURCE_DIR
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../rdma-core
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../rdma-core-49.0
   INSTALL_DIR
     ${CMAKE_INSTALL_PREFIX}
   CMAKE_ARGS
