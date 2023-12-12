@@ -20,9 +20,8 @@ HOSTDIR="$BR_DIR/host"
 
 EDK2_CODE="$HOSTDIR/share/qemu/edk2-x86_64-code.fd"
 EDK2_VARS="$HOSTDIR/share/qemu/edk2-i386-vars.fd"
+DISK="$IMGDIR/disk.qcow2"
 
-
-cd "$IMGDIR" || { echo "Failed to cd to $IMGDIR"; exit 1; }
 
 IBDEV="mlx5_0"
 IBPORT="1"
@@ -30,13 +29,15 @@ MAD_CHARDEV="/var/run/rdmacm-mux-$IBDEV-$IBPORT"
 
 HOST_IFACE="tap0-cvm"
 
-cp "$EDK2_VARS" ./ovmf_vars.fd
+TMPDIR="$(mktemp -d)"
+cd "$TMPDIR" || { echo "Failed to cd to $TMPDIR"; exit 1; }
 
-# Put the virtio-disk on a PCIe slot
-# Put the VMXNET3 device and the PVRDMA device on the same slot with
-#    function 0: VMXNET3
-#    function 1: PVRDMA
-# (this is necessary s.t. PVRDMA finds the VMXNET3 device)
+
+THIS_VARS="$TMPDIR/ovmf_vars_.fd"
+THIS_DISK="$TMPDIR/disk.qcow2"
+
+cp "$EDK2_VARS" "$THIS_VARS"
+cp "$DISK" "$THIS_DISK"
 
 # Put the virtio-disk and virtio-net on a PCIe slot
 
@@ -50,8 +51,8 @@ sudo env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
   -device pcie-root-port,chassis=2,id=pcie.2,addr=1c.1 \
   -drive if=pflash,format=raw,unit=0,file=$EDK2_CODE,readonly=on \
-  -drive if=pflash,format=raw,unit=1,file=ovmf_vars.fd \
-  -drive format=qcow2,id=hda,if=none,file=disk.qcow2 \
+  -drive if=pflash,format=raw,unit=1,file=$THIS_VARS \
+  -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
   -device virtio-blk-pci,scsi=off,bus=pcie.1,drive=hda,bootindex=1 \
   -netdev tap,id=hostnet0,vhost=on,ifname=tap0-cvm,script=no,downscript=no \
   -device virtio-net-pci,netdev=hostnet0,id=net0,bus=pcie.2
