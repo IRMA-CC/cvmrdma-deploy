@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -u
+
+PKG_CONFIG_PATH="@CMAKE_INSTALL_FULL_LIBDIR@/pkgconfig" \
+    exec pkg-config "$@"
