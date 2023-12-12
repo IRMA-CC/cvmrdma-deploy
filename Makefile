@@ -25,4 +25,5 @@ vanilla:
 
 .PHONY: br-cvm
 br-cvm:
-	./scripts/build_br_cvm.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR}
+	./scripts/prepare_br_cvm.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR}
+	$(MAKE) -C "${INSTALL_DIR}/br-cvm"
