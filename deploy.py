@@ -25,10 +25,11 @@ def parse_args(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--build", dest="builds", action="append", nargs="+", default=[])
     parser.add_argument("-r", "--rebuild-cvm", dest="rebuild_cvm", action="append", nargs="+", default=[])
+    parser.add_argument("-t", "--build-type", dest="build_type", default="Release")
     return parser.parse_args(argv[1:])
 
 
-async def deploy_one(host_spec, builds, rebuild_cvm):
+async def deploy_one(host_spec, builds, rebuild_cvm, build_type):
     host, arch = host_spec
     ssh_ctl = ctl / "%L-%r@%h:%p"
     srcdir = Path("cvmrdma-src")
@@ -38,16 +39,17 @@ async def deploy_one(host_spec, builds, rebuild_cvm):
     await p.communicate()
 
     print(f"[{host}] Sync parent directory")
-    p = await asyncio.create_subprocess_exec("rsync", "-e", f'ssh -S {str(ssh_ctl)}', "-aPzh", "--delete", "--exclude=.*", "..", f"{host}:{srcdir}")
+    p = await asyncio.create_subprocess_exec("rsync", "-e", f'ssh -S {str(ssh_ctl)}', "-aPzhv", "--delete", "--exclude=.*", "--exclude=cvmrdma-buildroot/dl/*", "..", f"{host}:{srcdir}")
     await p.communicate()
 
+#  -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
 
     print(f"[{host}] Build")
     build_init = f"""\
 export CC=gcc-10;
 export CXX=g++-10;
-export CFLAGS=\"-march={arch} -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined -fno-sanitize-recover\";
-export CXXFLAGS=\"-march={arch} -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined -fno-sanitize-recover\";
+export CFLAGS=\"-march={arch} -fno-omit-frame-pointer\";
+export CXXFLAGS=\"-march={arch} -fno-omit-frame-pointer\";
 cd {srcdir}/cvmrdma-deploy/ || exit;
 """
 
@@ -56,7 +58,7 @@ cd {srcdir}/cvmrdma-deploy/ || exit;
     build_cmd = ""
     if len(builds) > 0:
         do_build=True
-        build_cmd=f"make {' '.join(builds)};"
+        build_cmd=f"make {' '.join(builds)} BUILD_TYPE={build_type};"
 
     rebuild_cvm_cmd = ""
     if len(rebuild_cvm) > 0:
@@ -81,7 +83,7 @@ async def main(argv):
     
     t = []
     for h in HOSTS:
-        task = asyncio.create_task(deploy_one(h, flatten(args.builds), flatten(args.rebuild_cvm)))
+        task = asyncio.create_task(deploy_one(h, flatten(args.builds), flatten(args.rebuild_cvm), args.build_type))
         t.append(task)
 
     await asyncio.gather(*t)

@@ -3,27 +3,24 @@ SOURCE_DIR:=$(CURDIR)/..
 BUILD_DIR:=${HOME}/cvmrdma-build
 INSTALL_DIR:=${HOME}/cvmrdma-install
 
-BUILD_TYPE=Debug
+BUILD_TYPE=Release
 
 all: client
 
 .PHONY: toolchain
 toolchain:
-	./scripts/dl_toolchain.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR}
+
+CVMRDMA_BUILDDIR=${BUILD_DIR}/cvmrdma-$(BUILD_TYPE)
+CVMRDMA_INSTALLDIR=${INSTALL_DIR}/cvmrdma-$(BUILD_TYPE)
+.PHONY: cvmrdma
+cvmrdma:
+	cmake -S cvmrdma -B $(CVMRDMA_BUILDDIR) -DCMAKE_INSTALL_PREFIX=$(CVMRDMA_INSTALLDIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -GNinja
+	PKG_CONFIG=${CVMRDMA_INSTALLDIR}/bin/pkg-config cmake --build ${CVMRDMA_BUILDDIR}
 
 
-.PHONY: client
-client:
-	cmake -S rpc-client -B ${BUILD_DIR}/client -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/client -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -GNinja
-	PKG_CONFIG=${INSTALL_DIR}/client/bin/pkg-config cmake --build ${BUILD_DIR}/client
-
+VANILLA_BUILDDIR=${BUILD_DIR}/vanilla-$(BUILD_TYPE)
+VANILLA_INSTALLDIR=${INSTALL_DIR}/vanilla-$(BUILD_TYPE)
 .PHONY: vanilla
 vanilla:
-	cmake -S vanilla -B ${BUILD_DIR}/vanilla -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/vanilla -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -GNinja
-	PKG_CONFIG=${INSTALL_DIR}/vanilla/bin/pkg-config cmake --build ${BUILD_DIR}/vanilla
-
-
-.PHONY: br-cvm
-br-cvm:
-	./scripts/prepare_br_cvm.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR}
-	$(MAKE) -C "${INSTALL_DIR}/br-cvm"
+	cmake -S vanilla -B ${VANILLA_BUILDDIR} -DCMAKE_INSTALL_PREFIX=${VANILLA_INSTALLDIR} -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -GNinja
+	PKG_CONFIG=${VANILLA_INSTALLDIR}/bin/pkg-config cmake --build ${VANILLA_BUILDDIR}
