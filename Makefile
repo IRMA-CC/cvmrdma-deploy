@@ -7,8 +7,11 @@ BUILD_TYPE=Release
 
 all: client
 
+X86_VER=2
 .PHONY: toolchain
 toolchain:
+	./scripts/dl_toolchain.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR} ${X86_VER}
+
 
 CVMRDMA_BUILDDIR=${BUILD_DIR}/cvmrdma-$(BUILD_TYPE)
 CVMRDMA_INSTALLDIR=${INSTALL_DIR}/cvmrdma-$(BUILD_TYPE)
