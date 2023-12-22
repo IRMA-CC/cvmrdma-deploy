@@ -24,3 +24,9 @@ VANILLA_INSTALLDIR=${INSTALL_DIR}/vanilla-$(BUILD_TYPE)
 vanilla:
 	cmake -S vanilla -B ${VANILLA_BUILDDIR} -DCMAKE_INSTALL_PREFIX=${VANILLA_INSTALLDIR} -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -GNinja
 	PKG_CONFIG=${VANILLA_INSTALLDIR}/bin/pkg-config cmake --build ${VANILLA_BUILDDIR}
+
+
+.PHONY: br-sev
+br-sev:
+	./scripts/prepare_br_sev.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR}
+	$(MAKE) -C "${INSTALL_DIR}/br-sev"
