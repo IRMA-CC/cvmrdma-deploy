@@ -8,7 +8,8 @@ import sys
 
 HOSTS = [
 #    ("sectrs235", "cascadelake"),
-    ("sectrs245", "icelake-server")
+#    ("sectrs245", "icelake-server"),
+    ("glados", "znver3") # znver4 not supported by gcc 10
 ]
 
 
