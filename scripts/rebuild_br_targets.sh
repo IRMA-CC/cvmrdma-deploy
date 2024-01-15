@@ -8,11 +8,11 @@ if [[ $# -lt 1 ]]; then
 fi
 
 INSTALL_DIR="$HOME/cvmrdma-install"
-BR="$INSTALL_DIR/br-cvm"
-shift;
+BR="$INSTALL_DIR/br-sev"
 
 MAKE="make -C $BR"
-for TARGET in $@; do
+for TARGET in "$@"; do
+  echo "Rebuild $TARGET..."
   set -x
   $MAKE $TARGET-rebuild
   set +x

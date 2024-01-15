@@ -15,3 +15,7 @@ BR_SRC="$SOURCE_DIR/cvmrdma-buildroot"
 BR_BUILD="$INSTALL_DIR/br-sev" 
 
 make -C "$BR_SRC" O="$BR_BUILD" cvmrdma_sev_defconfig
+cat <<EOF > "$BR_BUILD/local.mk"
+LINUX_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/amdsev-linux")"
+RDMA_CORE_CVMRDMA_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-rdma-core")"
+EOF
