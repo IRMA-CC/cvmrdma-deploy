@@ -29,5 +29,6 @@ df.loc[:, "t"] -= min_t
 
 df.loc[:, "dt"] = df.loc[:, "t"].diff()
 
-print(df)
+with pd.option_context('display.max_rows', 10000):
+    print(df.loc[0:1000, :])
 
