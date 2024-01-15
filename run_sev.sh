@@ -178,6 +178,10 @@ THIS_DISK="$TMPDIR/disk.qcow2"
 cp "$EDK2_VARS" "$THIS_VARS"
 cp "$DISK" "$THIS_DISK"
 
+# Enable ip forwarding
+echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
+echo 1 | sudo tee /proc/sys/net/ipv6/conf/all/forwarding
+
 # Put the virtio-disk and virtio-net on a PCIe slot
 
 get_cbitpos
