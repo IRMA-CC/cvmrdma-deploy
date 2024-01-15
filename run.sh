@@ -1,22 +1,10 @@
 #!/usr/bin/env bash
 set -u
 
-# Requires a tap device called tap0-cvm to be already setup and connected to a bridge
-# (or a tap device with host routing)
-
-# Requires the rdmam-mux to be running
-# 1. disable the CM kernel modules
-# $ sudo modprobe -r ib_ipoib
-# $ sudo modprobe -r ib_cm
-# $ sudo modprobe -r rdma_ucm
-# $ sudo modprobe -r rdma_cm
-# 2. start the daemon
-# $ sudo rdmacm-mux -d mlx5_0
-
-
+# Requires a tap device called tap3-cvm (resp tap4-cvm) to be already setup
 SRIOV=0
 
-if [[ $SRIOV -eq 1]]; then
+if [[ $SRIOV -eq 1 ]]; then
   if [[ $# -lt 2 ]]; then
     echo "$0 <VMID> <PF_DEV> <VF_NUM>"
     echo "VMID: 3 or 4"
@@ -90,16 +78,18 @@ if [[ $SRIOV -eq 1]]; then
   TARGET_PCI="$VF_PCI"
 else
 
-  if [[ $# -lt 2 ]]; then
-    echo "$0 <VMID> <PF_PCI>"
+  if [[ $# -lt 3 ]]; then
+    echo "$0 <VMID> <PF_PCI> <PF_PCI2>"
     echo "VMID: 3 or 4"
     exit
   fi
 
   VMID="$1"
   PF_PCI="0000:$2"
+  PF_PCI2="0000:$3"
 
   PFDIR="/sys/bus/pci/devices/$PF_PCI"
+  PFDIR2="/sys/bus/pci/devices/$PF_PCI2"
 
   MLX5_DRIVER_DIR="/sys/bus/pci/drivers/mlx5_core"
   VFIO_DRIVER_DIR="/sys/bus/pci/drivers/vfio-pci"
@@ -110,17 +100,42 @@ else
     echo "$PF_PCI" | sudo tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
   fi
 
+  if [[ -d "$MLX5_DRIVER_DIR/$PF_PCI2" ]]; then
+    echo "PCI device $PF_PCI2 is bound to mlx driver. Unbinding it"
+
+    echo "$PF_PCI2" | sudo tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
+  fi
+
+
+
+  # Pass the PCI ID for the VFs to the VFIO driver
+  # OK to fail if the ID is already registered
+  MLX_PF_VENDOR_ID="15b3"
+  MLX_PF_DEVICE_ID="1017"
+  echo $MLX_PF_VENDOR_ID $MLX_PF_DEVICE_ID | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register MLX's VF PCI ID"; }
+
+
+
   if [[ ! -d "$VFIO_DRIVER_DIR/$PF_PCI" ]]; then
     echo "PCI device $PF_PCI is NOT bound to VFIO driver. Registering its ID"
 
-    echo "$PF_PCI" | sudo tee "$VFIO_DRIVER_DIR/new_id" || { exit 1; }
+    echo "$PF_PCI" | sudo tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
   fi
 
+  if [[ ! -d "$VFIO_DRIVER_DIR/$PF_PCI2" ]]; then
+    echo "PCI device $PF_PCI2 is NOT bound to VFIO driver. Registering its ID"
+
+    echo "$PF_PCI2" | sudo tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
+  fi
+
+
+
   TARGET_PCI="$PF_PCI"
+  TARGET_PCI2="$PF_PCI2"
 fi
 
 INSTALL_DIR="$HOME/cvmrdma-install"
-BR_DIR="$HOME/cvmrdma-install/br-qemu"
+BR_DIR="$HOME/cvmrdma-install/br-sev"
 IMGDIR="$BR_DIR/images"
 HOSTDIR="$BR_DIR/host"
 
@@ -150,6 +165,7 @@ sudo env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -device pcie-root-port,chassis=2,id=pcie.2,addr=1c.1 \
   -device pcie-root-port,chassis=3,id=pcie.3,addr=1c.2 \
   -device pcie-root-port,chassis=4,id=pcie.4,addr=1c.3 \
+  -device pcie-root-port,chassis=5,id=pcie.5,addr=1c.4 \
   -drive if=pflash,format=raw,unit=0,file=$EDK2_CODE,readonly=on \
   -drive if=pflash,format=raw,unit=1,file=$THIS_VARS \
   -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
@@ -158,4 +174,5 @@ sudo env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -device virtio-net-pci,netdev=hostnet0,id=net0,bus=pcie.2 \
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
-  -device vfio-pci,host=$TARGET_PCI,bus=pcie.4
+  -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
+  -device vfio-pci,host=$TARGET_PCI2,bus=pcie.5
