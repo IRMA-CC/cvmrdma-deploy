@@ -17,6 +17,19 @@ CMAKE_CACHE_ARGS
   -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
 )
 
+ExternalProject_Add(sodium
+  URL https://download.libsodium.org/libsodium/releases/libsodium-1.0.19-stable.tar.gz
+  # the "stable" target may change, don't set a hash
+  # DOWNLOAD_EXTRACT_TIMESTAMP TRUE # 3.24
+  INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
+  CONFIGURE_COMMAND <SOURCE_DIR>/configure --srcdir=<SOURCE_DIR> --prefix=<INSTALL_DIR>
+  BUILD_COMMAND make -j32 
+  TEST_BEFORE_INSTALL true
+  TEST_COMMAND make check
+  INSTALL_COMMAND make install
+)
+
+
 ExternalProject_Add(rdma-core
   DEPENDS
     pkg-config
