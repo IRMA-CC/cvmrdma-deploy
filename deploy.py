@@ -63,7 +63,7 @@ cd {srcdir}/cvmrdma-deploy/ || exit;
     rebuild_cvm_cmd = ""
     if len(rebuild_cvm) > 0:
         do_build=True
-        rebuild_cvm_cmd = f"./scripts/rebuild_br_targets.sh {' '.join(rebuild_cvm)};"
+        rebuild_cvm_cmd = f"./scripts/rebuild_br_targets.sh {build_type} {' '.join(rebuild_cvm)};"
 
 
     if do_build:

@@ -31,5 +31,5 @@ vanilla:
 
 .PHONY: br-sev
 br-sev:
-	./scripts/prepare_br_sev.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR}
-	$(MAKE) -C "${INSTALL_DIR}/br-sev"
+	./scripts/prepare_br_sev.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR} ${BUILD_TYPE}
+	$(MAKE) -C "${INSTALL_DIR}/br-sev-${BUILD_TYPE}"
