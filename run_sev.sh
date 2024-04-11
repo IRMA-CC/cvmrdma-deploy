@@ -34,11 +34,11 @@ fi
 VMID="$1"
 BUILD_TYPE="$2"
 
-PF_PCI="0000:49:00.0"
+PF_PCI="0000:01:00.0"
 HOST_IFACE="enp161s0f1"
 REMOTE="4"
 if [[ $VMID -eq 4 ]]; then
-  PF_PCI="0000:4f:00.0"
+  PF_PCI="0000:02:00.0"
   HOST_IFACE="eno2"
   REMOTE="3"
 fi

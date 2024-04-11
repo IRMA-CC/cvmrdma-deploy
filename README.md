@@ -107,7 +107,7 @@ The Buildroot project will assume that an existing toolchain has been setup at `
 `deploy.py` can automatically download and relocate the toolchain for us:
 
 ```shell
-./deploy.py -t toolchain
+./deploy.py -b toolchain
 ```
 
 TRIVIA: This downloads prebuilt Bootlin toolchains (from https://toolchains.bootlin.com/releases_x86-64-v3.html). We're using x86-64-v3 psABI (https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels) to get a libc optimized for our hardware (rather than for the generic x64-64 platform). Our `Zen 4` machine SHOULD also work with x86-64-v4, but VMs built with this toolchain failed to boot (invalid instruction exception). Why? 
@@ -168,7 +168,7 @@ sudo ./run_sev.sh 4 Release
 The scripts starts each VM with:
 
 - a passed through mlx5 IB adapter:
-    + if the adapters change location in the machine, you have to change their PCI addresses in the script (`0000:49:00.0` and `0000:4f:00.0`)
+    + if the adapters change location in the machine, you have to change their PCI addresses in the script (`0000:01:00.0` and `0000:02:00.0`)
 - a MACVTAP Ethernet device 
     + if the Ethernet cable changes ports, you have to change the scripts too (for now: `enp161s0f1` and `eno2`)
     + using vhost-net, for better performance
@@ -195,7 +195,7 @@ VM4> ibtest -c 10.0.0.3
 WARN: `run{_sev}.sh` unbinds the mlx5 devices from the mlx5_ib kernel driver! Even after the VMs are stopped, the devices are not re-attached to the driver. To use the devices again from the host, run:
 
 ```shell
-for p in 0000:49:00.0 0000:49:00.1 0000:4f:00.0  0000:4f:00.1; do
+for p in 0000:01:00.0 0000:01:00.1 0000:02:00.0  0000:02:00.1; do
     echo $p | sudo tee /sys/bus/pci/drivers/vfio-pci/unbind | sudo tee /sys/bus/pci/drivers/mlx5_core/bind;
 done
 ```

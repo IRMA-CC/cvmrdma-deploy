@@ -7,7 +7,7 @@ BUILD_TYPE=Release
 
 all: client
 
-X86_VER=2
+X86_VER=3
 .PHONY: toolchain
 toolchain:
 	./scripts/dl_toolchain.sh ${SOURCE_DIR} ${BUILD_DIR} ${INSTALL_DIR} ${X86_VER}
