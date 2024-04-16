@@ -199,3 +199,9 @@ for p in 0000:01:00.0 0000:01:00.1 0000:02:00.0  0000:02:00.1; do
     echo $p | sudo tee /sys/bus/pci/drivers/vfio-pci/unbind | sudo tee /sys/bus/pci/drivers/mlx5_core/bind;
 done
 ```
+
+```shell
+for p in 0000:41:00.0 0000:85:00.1; do
+    echo $p | sudo tee /sys/bus/pci/drivers/vfio-pci/unbind | sudo tee /sys/bus/pci/drivers/ixgbe/bind;
+done
+```

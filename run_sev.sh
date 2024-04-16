@@ -35,10 +35,12 @@ VMID="$1"
 BUILD_TYPE="$2"
 
 PF_PCI="0000:01:00.0"
+NIC_ID="0000:41:00.0"
 HOST_IFACE="enp161s0f1"
 REMOTE="4"
 if [[ $VMID -eq 4 ]]; then
   PF_PCI="0000:02:00.0"
+  NIC_ID="0000:85:00.0"
   HOST_IFACE="eno2"
   REMOTE="3"
 fi
@@ -47,6 +49,7 @@ fi
 PFDIR="/sys/bus/pci/devices/$PF_PCI"
 
 MLX5_DRIVER_DIR="/sys/bus/pci/drivers/mlx5_core"
+IXGBE_DRIVER_DIR="/sys/bus/pci/drivers/ixgbe"
 VFIO_DRIVER_DIR="/sys/bus/pci/drivers/vfio-pci"
 
 if [[ -d "$MLX5_DRIVER_DIR/$PF_PCI" ]]; then
@@ -71,6 +74,31 @@ fi
 
 TARGET_PCI="$PF_PCI"
 
+
+
+
+if [[ -d "$IXGBE_DRIVER_DIR/$NIC_ID" ]]; then
+  echo "PCI device $NIC_ID is bound to ixgbe driver. Unbinding it"
+
+  echo "$NIC_ID" | tee "$IXGBE_DRIVER_DIR/unbind" || { exit 1; }
+fi
+
+# Pass the PCI ID for the VFs to the VFIO driver
+# OK to fail if the ID is already registered
+INTEL_NIC_VENDOR_ID="8086"
+INTEL_NIC_DEVICE_ID="1560"
+echo $INTEL_NIC_VENDOR_ID $INTEL_NIC_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register Intel NIC PCI ID"; }
+
+if [[ ! -d "$VFIO_DRIVER_DIR/$NIC_ID" ]]; then
+  echo "PCI device $NIC_ID is NOT bound to VFIO driver. Registering its ID"
+
+  echo "$NIC_ID" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
+fi
+
+TARGET_PCI_NIC="$NIC_ID"
+
+
+
 set -x
 
 USER_HOME=$(getent passwd $SUDO_USER | cut -d: -f6)
@@ -80,7 +108,6 @@ IMGDIR="$BR_DIR/images"
 HOSTDIR="$BR_DIR/host"
 
 EDK2_CODE="$IMGDIR/OVMF_CODE.fd"
-EDK2_VARS="$IMGDIR/OVMF_VARS.fd"
 DISK="$IMGDIR/disk.qcow2"
 
 # 16 GiB
@@ -90,10 +117,8 @@ DISCARD="none"
 TMPDIR="$(mktemp -d)"
 cd "$TMPDIR" || { echo "Failed to cd to $TMPDIR"; exit 1; }
 
-THIS_VARS="$TMPDIR/ovmf_vars_.fd"
 THIS_DISK="$TMPDIR/disk.qcow2"
 
-cp "$EDK2_VARS" "$THIS_VARS"
 cp "$DISK" "$THIS_DISK"
 
 # Enable ip forwarding
@@ -128,8 +153,8 @@ env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -device pcie-root-port,chassis=2,id=pcie.2,addr=1c.1 \
   -device pcie-root-port,chassis=3,id=pcie.3,addr=1c.2 \
   -device pcie-root-port,chassis=4,id=pcie.4,addr=1c.3 \
+  -device pcie-root-port,chassis=5,id=pcie.5,addr=1c.4 \
   -drive if=pflash,format=raw,unit=0,file=$EDK2_CODE,readonly=on \
-  -drive if=pflash,format=raw,unit=1,file=$THIS_VARS \
   -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
   -device virtio-blk-pci,scsi=off,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
   -netdev tap,fd=3,id=hostnet0,vhost=on,vhostfd=4 \
@@ -137,6 +162,7 @@ env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
   -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
+  -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   3<>/dev/tap$MACVTAP_ID 4<>/dev/vhost-net
 
 #  -netdev tap,id=hostnet0,vhost=on,ifname=$MACVTAP_IFACE,script=no,downscript=no \
