@@ -143,7 +143,7 @@ env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -machine memory-encryption=sev0,vmport=off \
-  -object memory-backend-memfd,id=ram1,size=${MEM}M,share=true \
+  -object memory-backend-memfd,id=ram1,size=${MEM}M,share=true,prealloc=false \
   -object sev-snp-guest,id=sev0,cbitpos=${CBITPOS},reduced-phys-bits=1 \
   -machine memory-backend=ram1 \
   -bios $EDK2_CODE \
