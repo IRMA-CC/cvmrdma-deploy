@@ -112,7 +112,6 @@ DISK="$IMGDIR/disk.qcow2"
 
 # 16 GiB
 MEM=16384
-DISCARD="none"
 
 TMPDIR="$(mktemp -d)"
 cd "$TMPDIR" || { echo "Failed to cd to $TMPDIR"; exit 1; }
@@ -144,9 +143,10 @@ env LD_LIBRARY_PATH="$HOSTDIR/lib" PATH="$HOSTDIR/bin:$PATH" \
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -machine memory-encryption=sev0,vmport=off \
-  -object memory-backend-memfd-private,id=ram1,size=${MEM}M,share=true \
-  -object sev-snp-guest,id=sev0,cbitpos=${CBITPOS},reduced-phys-bits=1,discard=${DISCARD} \
-  -machine memory-backend=ram1,kvm-type=protected \
+  -object memory-backend-memfd,id=ram1,size=${MEM}M,share=true \
+  -object sev-snp-guest,id=sev0,cbitpos=${CBITPOS},reduced-phys-bits=1 \
+  -machine memory-backend=ram1 \
+  -bios $EDK2_CODE \
   -no-reboot \
   -nographic \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
