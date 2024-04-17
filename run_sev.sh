@@ -138,7 +138,7 @@ echo "Macvtap /dev/tap$MACVTAP_ID"
 # Put the virtio-disk and virtio-net on a PCIe slot
 
 get_cbitpos
-/home/lcohnen/AMDSEVusr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 -cpu EPYC-v4 \
+/home/lcohnen/AMDSEV/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 -cpu EPYC-v4 \
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -machine memory-encryption=sev0,vmport=off \
