@@ -162,6 +162,8 @@ get_cbitpos
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
   -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
   -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
+  -netdev user,id=vmnic \
+  -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
   3<>/dev/tap$MACVTAP_ID 4<>/dev/vhost-net
 
 #  -netdev tap,id=hostnet0,vhost=on,ifname=$MACVTAP_IFACE,script=no,downscript=no \
