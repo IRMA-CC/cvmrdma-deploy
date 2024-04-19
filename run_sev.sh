@@ -156,14 +156,11 @@ get_cbitpos
   -drive if=pflash,format=raw,unit=0,file=$EDK2_CODE,readonly=on \
   -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
   -device virtio-blk-pci,scsi=off,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
-  -netdev tap,fd=3,id=hostnet0,vhost=on,vhostfd=4 \
-  -device virtio-net-pci,netdev=hostnet0,id=net0,bus=pcie.2,mac=$MACVTAP_MAC \
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
   -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
   -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
-  3<>/dev/tap$MACVTAP_ID 4<>/dev/vhost-net
 
 #  -netdev tap,id=hostnet0,vhost=on,ifname=$MACVTAP_IFACE,script=no,downscript=no \
