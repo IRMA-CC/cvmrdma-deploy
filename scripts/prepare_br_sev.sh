@@ -27,6 +27,7 @@ cat <<EOF >> "$BR_BUILD/.config"
 BR2_ENABLE_DEBUG=y
 BR2_ENABLE_RUNTIME_DEBUG=y
 BR2_PACKAGE_GDB=y
+BR2_STRIP_strip=n
 EOF
 make -C "$BR_BUILD" olddefconfig
 fi
