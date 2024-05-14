@@ -43,14 +43,15 @@ async def deploy_one(host_spec, builds, rebuild_cvm, build_type):
     p = await asyncio.create_subprocess_exec("rsync", "-e", f'ssh -S {str(ssh_ctl)}', "-aPzhv", "--delete", "--exclude=.*", "--exclude=cvmrdma-buildroot/dl/*", "..", f"{host}:{srcdir}")
     await p.communicate()
 
-#  -fsanitize=address -fsanitize=undefined -fno-sanitize-recover
+#  -fsanitize=address -fsanitize=undefined -fno-sanitize-recover 
+#  -fsanitize=thread
 
     print(f"[{host}] Build")
     build_init = f"""\
 export CC=gcc-10;
 export CXX=g++-10;
-export CFLAGS=\"-march={arch} -fno-omit-frame-pointer -fsanitize=thread\";
-export CXXFLAGS=\"-march={arch} -fno-omit-frame-pointer -fsanitize=thread\";
+export CFLAGS=\"-march={arch} -fno-omit-frame-pointer\";
+export CXXFLAGS=\"-march={arch} -fno-omit-frame-pointer\";
 cd {srcdir}/cvmrdma-deploy/ || exit;
 """
 
