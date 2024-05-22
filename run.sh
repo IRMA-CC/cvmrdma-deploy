@@ -119,7 +119,8 @@ MACVTAP_MAC=$(cat /sys/class/net/$MACVTAP_IFACE/address | tr -s '\n' ' ')
 echo "Macvtap /dev/tap$MACVTAP_ID"
 # Put the virtio-disk and virtio-net on a PCIe slot
 
-/home/lcohnen/AMDSEV/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 -cpu EPYC-v4 \
+/home/lcohnen/AMDSEV/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 \
+  -cpu EPYC-v4,+vaes,+avx512f \
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -bios /home/lcohnen/AMDSEV/usr/local/share/qemu/OVMF_CODE.fd \
