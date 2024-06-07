@@ -50,8 +50,8 @@ async def deploy_one(host_spec, builds, rebuild_cvm, build_type):
     build_init = f"""\
 export CC=gcc-10;
 export CXX=g++-10;
-export CFLAGS=\"-march={arch} -fno-omit-frame-pointer\";
-export CXXFLAGS=\"-march={arch} -fno-omit-frame-pointer\";
+export CFLAGS=\"-march={arch} -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined -fno-sanitize-recover \";
+export CXXFLAGS=\"-march={arch} -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined -fno-sanitize-recover \";
 cd {srcdir}/cvmrdma-deploy/ || exit;
 """
 
