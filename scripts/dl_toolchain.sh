@@ -20,7 +20,7 @@ TOOLCHAINS_SHA256=(
     ""
     "e896274d4c540a45da02c1a167264116314b5e3afd298b79f28554b0f4eb498d"
     "dbb470879dff87a6a99f6736959f5b38f6cce665b1f9c56c1c6450663c0f07de"
-    "8c2a9de04b56a33ca55190e4479d5ebea17e853fd1ad38eb4750868f2bf459ee"
+    "49031a3567c018a94d8158f8f5767d3438da21c8ad493c90c641d11e55f44d81" # x86-64-v3--glibc--bleeding-edge-2023.11-1.tar.bz2
     "59cc1a8d860fd63a597efa863a47dfdecb489723678dfee6386e0970fb556693"
 )
 SHA256="${TOOLCHAINS_SHA256[$X86_VER]}"
@@ -30,7 +30,7 @@ if [[ $X86_VER -gt "1" ]]; then
     ARCH="x86-64-v$X86_VER"
 fi
 
-TOOLCHAIN_NAME="$ARCH--glibc--bleeding-edge-2023.08-1.tar.bz2"
+TOOLCHAIN_NAME="$ARCH--glibc--bleeding-edge-2023.11-1.tar.bz2"
 
 
 TOOLCHAIN_URI="https://toolchains.bootlin.com/downloads/releases/toolchains/${ARCH}/tarballs/${TOOLCHAIN_NAME}"
