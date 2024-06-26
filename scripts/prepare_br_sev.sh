@@ -19,6 +19,7 @@ make -C "$BR_SRC" O="$BR_BUILD" cvmrdma_sev_defconfig
 cat <<EOF > "$BR_BUILD/local.mk"
 LINUX_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-linux")"
 RDMA_CORE_CVMRDMA_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-rdma-core")"
+RDMA_CORE_CVMRDMA_SRC_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-rdma-core")"
 EOF
 
 

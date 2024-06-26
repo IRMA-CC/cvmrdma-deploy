@@ -110,8 +110,8 @@ HOSTDIR="$BR_DIR/host"
 EDK2_CODE="$IMGDIR/OVMF_CODE.fd"
 DISK="$IMGDIR/disk.qcow2"
 
-# 16 GiB
-MEM=32768
+# 48 GiB
+MEM=49152
 
 TMPDIR="$(mktemp -d)"
 cd "$TMPDIR" || { echo "Failed to cd to $TMPDIR"; exit 1; }

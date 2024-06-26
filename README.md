@@ -144,7 +144,7 @@ make
 You can rebuild packages from `deploy.py` or directly on the remote machines using `make <pkg>-rebuild`:
 
 ```shell
-./deploy.py -r linux ibverbs-test-app rdma-core-cvmrdma -t Release
+./deploy.py -r linux ibverbs-test-app rdma-core-cvmrdma gam -t Release
 ```
 
 ### Running
