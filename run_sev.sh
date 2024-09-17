@@ -143,9 +143,8 @@ get_cbitpos
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -machine memory-encryption=sev0,vmport=off \
-  -object memory-backend-memfd,id=ram1,size=${MEM}M,share=true,prealloc=false \
+  -object memory-backend-memfd,id=ram1,size=$((${MEM} - 4096))M,share=true,prealloc=false \
   -object sev-snp-guest,id=sev0,cbitpos=${CBITPOS},reduced-phys-bits=1 \
-  -machine memory-backend=ram1 \
   -bios /home/lcohnen/AMDSEV/usr/local/share/qemu/OVMF_CODE.fd \
   -no-reboot \
   -nographic \
@@ -163,5 +162,8 @@ get_cbitpos
   -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
+  -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
+  -numa node,memdev=huge,nodeid=0 \
+  -numa node,memdev=ram1,nodeid=1 \
 
 #  -netdev tap,id=hostnet0,vhost=on,ifname=$MACVTAP_IFACE,script=no,downscript=no \

@@ -140,4 +140,8 @@ echo "Macvtap /dev/tap$MACVTAP_ID"
   -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
+  -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
+  -object memory-backend-ram,id=normal_mem,size=$((${MEM} - 4096))M,share=on \
+  -numa node,memdev=huge,nodeid=0 \
+  -numa node,memdev=normal_mem,nodeid=1 \
 
