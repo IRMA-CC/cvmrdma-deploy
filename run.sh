@@ -119,6 +119,8 @@ MACVTAP_MAC=$(cat /sys/class/net/$MACVTAP_IFACE/address | tr -s '\n' ' ')
 echo "Macvtap /dev/tap$MACVTAP_ID"
 # Put the virtio-disk and virtio-net on a PCIe slot
 
+mount -t hugetlbfs none /mnt/huge
+
 /home/lcohnen/AMDSEV/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \
   -smp 4,maxcpus=255 \
@@ -133,15 +135,17 @@ echo "Macvtap /dev/tap$MACVTAP_ID"
   -device pcie-root-port,chassis=5,id=pcie.5,addr=1c.4 \
   -drive if=pflash,format=raw,unit=0,file=$EDK2_CODE,readonly=on \
   -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
-  -device virtio-blk-pci,scsi=off,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
+  -device virtio-blk-pci,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
   -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
   -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
-  -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
-  -object memory-backend-ram,id=normal_mem,size=$((${MEM} - 4096))M,share=on \
-  -numa node,memdev=huge,nodeid=0 \
-  -numa node,memdev=normal_mem,nodeid=1 \
+
+
+  # -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
+  # -object memory-backend-ram,id=normal_mem,size=$((${MEM} - 4096))M,share=on \
+  # -numa node,memdev=huge,nodeid=0 \
+  # -numa node,memdev=normal_mem,nodeid=1 \
 

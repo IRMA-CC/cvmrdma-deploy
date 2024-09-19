@@ -107,7 +107,7 @@ BR_DIR="$INSTALL_DIR/br-sev-$BUILD_TYPE"
 IMGDIR="$BR_DIR/images"
 HOSTDIR="$BR_DIR/host"
 
-EDK2_CODE="$IMGDIR/OVMF_CODE.fd"
+EDK2_CODE="/home/lcohnen/AMDSEV/usr/local/share/qemu/OVMF_CODE.fd"
 DISK="$IMGDIR/disk.qcow2"
 
 # 48 GiB
@@ -136,6 +136,10 @@ MACVTAP_MAC=$(cat /sys/class/net/$MACVTAP_IFACE/address | tr -s '\n' ' ')
 
 echo "Macvtap /dev/tap$MACVTAP_ID"
 # Put the virtio-disk and virtio-net on a PCIe slot
+mount -t hugetlbfs none /mnt/huge
+# enable 2MB THP pages, see https://github.com/AMDESE/AMDSEV/issues/225
+echo 1 >/sys/module/kvm/parameters/gmem_2m_enabled
+
 
 get_cbitpos
 /home/lcohnen/AMDSEV/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 \
@@ -143,9 +147,10 @@ get_cbitpos
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -machine memory-encryption=sev0,vmport=off \
-  -object memory-backend-memfd,id=ram1,size=$((${MEM} - 4096))M,share=true,prealloc=false \
+  -object memory-backend-memfd,id=ram1,size=$((${MEM} + 0))M,share=true,prealloc=false \
+  -machine memory-backend=ram1 \
   -object sev-snp-guest,id=sev0,cbitpos=${CBITPOS},reduced-phys-bits=1 \
-  -bios /home/lcohnen/AMDSEV/usr/local/share/qemu/OVMF_CODE.fd \
+  -bios /home/lcohnen/AMDSEV/usr/local/share/qemu/OVMF.fd \
   -no-reboot \
   -nographic \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
@@ -153,17 +158,17 @@ get_cbitpos
   -device pcie-root-port,chassis=3,id=pcie.3,addr=1c.2 \
   -device pcie-root-port,chassis=4,id=pcie.4,addr=1c.3 \
   -device pcie-root-port,chassis=5,id=pcie.5,addr=1c.4 \
-  -drive if=pflash,format=raw,unit=0,file=$EDK2_CODE,readonly=on \
   -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
-  -device virtio-blk-pci,scsi=off,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
+  -device virtio-blk-pci,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
   -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
   -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
-  -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
-  -numa node,memdev=huge,nodeid=0 \
-  -numa node,memdev=ram1,nodeid=1 \
+
+  # -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
+  # -numa node,memdev=huge,nodeid=0 \
+  # -numa node,memdev=ram1,nodeid=1 \
 
 #  -netdev tap,id=hostnet0,vhost=on,ifname=$MACVTAP_IFACE,script=no,downscript=no \
