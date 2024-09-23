@@ -107,7 +107,6 @@ BR_DIR="$INSTALL_DIR/br-sev-$BUILD_TYPE"
 IMGDIR="$BR_DIR/images"
 HOSTDIR="$BR_DIR/host"
 
-EDK2_CODE="/home/lcohnen/AMDSEV/usr/local/share/qemu/OVMF_CODE.fd"
 DISK="$IMGDIR/disk.qcow2"
 
 # 48 GiB
@@ -142,7 +141,7 @@ echo 1 >/sys/module/kvm/parameters/gmem_2m_enabled
 
 
 get_cbitpos
-/home/lcohnen/AMDSEV/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 \
+/home/lcohnen/AMDSEV/snp-release-2024-04-16/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
@@ -150,7 +149,7 @@ get_cbitpos
   -object memory-backend-memfd,id=ram1,size=$((${MEM} + 0))M,share=true,prealloc=false \
   -machine memory-backend=ram1 \
   -object sev-snp-guest,id=sev0,cbitpos=${CBITPOS},reduced-phys-bits=1 \
-  -bios /home/lcohnen/AMDSEV/usr/local/share/qemu/OVMF.fd \
+  -bios /home/lcohnen/AMDSEV/snp-release-2024-04-16/usr/local/share/qemu/OVMF_CODE.fd \
   -no-reboot \
   -nographic \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
