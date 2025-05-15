@@ -205,3 +205,32 @@ for p in 0000:41:00.0 0000:85:00.1; do
     echo $p | sudo tee /sys/bus/pci/drivers/vfio-pci/unbind | sudo tee /sys/bus/pci/drivers/ixgbe/bind;
 done
 ```
+
+### Additional notes regarding the setup
+
+This sections lists problems we had during the build of Leo's version and how we resolved them:
+
+The project requires the libaegis library to be installed in /usr/local
+Clone the project from https://github.com/aegis-aead/libaegis
+And compile it using:
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make install
+```
+
+Leos version depends on the qemu version of [AMDSEV](https://github.com/AMDESE/AMDSEV?tab=readme-ov-file#faq-2). However the qemu bundled with AMDSEV by default does not have user netdev enabled. 
+To enable it open common.sh (after checking out snbp-latest) and add `--enable-slirp --enable-user` to the qemu `./configure` line so it reads
+It is probably smarter to edit the ./configure statement in common.sh in the repo before building the complete repo.
+```bash
+run_cmd ./configure --enable-slirp --enable-user --target-list=x86_64-softmmu --prefix=$DEST
+```
+Note that this might result in qemu not bing copied into ```/home/fheinen/AMDSEV/usr/local/bin/qemu-system-x86_64```
+but instead the new version is only located at 
+```/home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64```
+This was adapted in run.sh.
+Otherwise follow the instructions of AMDSEV to install an SEV-SNP enabled kernel required for run_sev.sh to work
+ 
+Gam (and all other adapted applications) faults by default. For some reason the libcuckoo library required does not build. To ensure a correct build libcuckoo in ```/home/fheinen/cvmrdma-install/br-sev-Debug/build/gam-custom/lib/libcuckoo``` according to the README in the same folder.
+Note that we build in ```cvmrdma-install```. If you try to build it in ```cvmrdma-src```the library is not copied over correctly.

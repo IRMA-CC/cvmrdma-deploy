@@ -121,11 +121,11 @@ echo "Macvtap /dev/tap$MACVTAP_ID"
 
 mount -t hugetlbfs none /mnt/huge
 
-/home/lcohnen/AMDSEV/snp-release-2024-04-16/usr/local/bin/qemu-system-x86_64 -accel kvm -machine q35 \
+/home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \
   -smp 4,maxcpus=255 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
-  -bios /home/lcohnen/AMDSEV/snp-release-2024-04-16/usr/local/share/qemu/OVMF_CODE.fd \
+  -bios /home/fheinen/AMDSEV/snp-release-2025-05-10/usr/local/share/qemu/OVMF_CODE.fd \
   -no-reboot \
   -nographic \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
