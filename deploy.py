@@ -33,7 +33,7 @@ def parse_args(argv):
 async def deploy_one(host_spec, builds, rebuild_cvm, build_type):
     host, arch = host_spec
     ssh_ctl = ctl / "%L-%r@%h:%p"
-    srcdir = Path("cvmrdma-src")
+    srcdir = Path("leo-cvmrdma-src")
 
     print(f"[{host}] Start ssh session")
     p = await asyncio.create_subprocess_exec("ssh", "-Nf", "-o", "ControlMaster=auto", "-S", str(ssh_ctl), "-o", "ControlPersist=60", host)

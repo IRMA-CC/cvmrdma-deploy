@@ -1,7 +1,7 @@
 
 SOURCE_DIR:=$(CURDIR)/..
 BUILD_DIR:=${HOME}/cvmrdma-build
-INSTALL_DIR:=${HOME}/cvmrdma-install
+INSTALL_DIR:=${HOME}/leo-cvmrdma-install
 
 BUILD_TYPE=Release
 

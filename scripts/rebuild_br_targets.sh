@@ -10,7 +10,7 @@ fi
 BUILD_TYPE="$1"
 shift
 
-INSTALL_DIR="$HOME/cvmrdma-install"
+INSTALL_DIR="$HOME/leo-cvmrdma-install"
 BR="$INSTALL_DIR/br-sev-$BUILD_TYPE"
 
 

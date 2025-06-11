@@ -102,7 +102,7 @@ TARGET_PCI_NIC="$NIC_ID"
 set -x
 
 USER_HOME=$(getent passwd $SUDO_USER | cut -d: -f6)
-INSTALL_DIR="$USER_HOME/cvmrdma-install"
+INSTALL_DIR="$USER_HOME/leo-cvmrdma-install"
 BR_DIR="$INSTALL_DIR/br-sev-$BUILD_TYPE"
 IMGDIR="$BR_DIR/images"
 HOSTDIR="$BR_DIR/host"

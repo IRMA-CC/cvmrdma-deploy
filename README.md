@@ -72,14 +72,14 @@ This build configuration should be usable directly with CMake, but the expected 
 ```shell
 ./deploy.py -b cvmrdma -t Release
 # builds in: $HOME/cvmrdma-build/cvmrdma-Release
-# installs in: $HOME/cvmrdma-install/cvmrdma-Release
+# installs in: $HOME/leo-cvmrdma-install/cvmrdma-Release
 
 
 # or
 
 ./deploy.py -b cvmrdma -t Debug
 # builds in: $HOME/cvmrdma-build/cvmrdma-Debug
-# installs in: $HOME/cvmrdma-install/cvmrdma-Debug
+# installs in: $HOME/leo-cvmrdma-install/cvmrdma-Debug
 ```
 
 The Debug and Release configurations can live side by side.
@@ -102,7 +102,7 @@ LD_LIBRARY_PATH="./install/lib" ./install/bin/ibtest --client 10.0.0.3
 
 ### Downloading the toolchain
 
-The Buildroot project will assume that an existing toolchain has been setup at `${HOME}/cvmrdma-install/toolchain-x86-64-v3`.
+The Buildroot project will assume that an existing toolchain has been setup at `${HOME}/leo-cvmrdma-install/toolchain-x86-64-v3`.
 
 `deploy.py` can automatically download and relocate the toolchain for us:
 
@@ -122,18 +122,18 @@ The configuration step includes creating a `local.mk` file pointing to the local
 # 1st build
 
 ./deploy.py -b br-sev -t Release
-# configures and builds in $HOME/cvmrdma-install/br-sev-Release
+# configures and builds in $HOME/leo-cvmrdma-install/br-sev-Release
 
 # or enable debug symbols/assertions
 ./deploy.py -b br-sev -t Debug
-# configures and builds in $HOME/cvmrdma-install/br-sev-Debug
+# configures and builds in $HOME/leo-cvmrdma-install/br-sev-Debug
 ```
 
 You can change the configuration directly on the machine
 
 ```shell
 ssh glados
-cd $HOME/cvmrdma-install/br-sev-Release
+cd $HOME/leo-cvmrdma-install/br-sev-Release
 make menuconfig
 make linux-menuconfig
 
@@ -153,7 +153,7 @@ You can run the image in a normal VM or in a CVM. The scripts are designed to ru
 
 ```shell
 ssh glados
-cd "$HOME/cvmrdma-src/cvmrdma-deploy"
+cd "$HOME/leo-cvmrdma-src/cvmrdma-deploy"
 
 
 # run br-sev-Debug in normal VMs
@@ -172,7 +172,7 @@ The scripts starts each VM with:
 - a MACVTAP Ethernet device 
     + if the Ethernet cable changes ports, you have to change the scripts too (for now: `enp161s0f1` and `eno2`)
     + using vhost-net, for better performance
-- a p9 directory, pointing to `cvmrdma-install/br-sev` on the host (to access binaries after a rebuild, without rebooting the VM).
+- a p9 directory, pointing to `leo-cvmrdma-install/br-sev` on the host (to access binaries after a rebuild, without rebooting the VM).
 
 Once in the VMs, you have to setup IPs and Wireguard with the corresponding script. This also starts OpenSM on VM 3:
 
@@ -232,5 +232,5 @@ but instead the new version is only located at
 This was adapted in run.sh.
 Otherwise follow the instructions of AMDSEV to install an SEV-SNP enabled kernel required for run_sev.sh to work
  
-Gam (and all other adapted applications) faults by default. For some reason the libcuckoo library required does not build. To ensure a correct build libcuckoo in ```/home/fheinen/cvmrdma-install/br-sev-Debug/build/gam-custom/lib/libcuckoo``` according to the README in the same folder.
-Note that we build in ```cvmrdma-install```. If you try to build it in ```cvmrdma-src```the library is not copied over correctly.
+Gam (and all other adapted applications) faults by default. For some reason the libcuckoo library required does not build. To ensure a correct build libcuckoo in ```/home/fheinen/leo-cvmrdma-install/br-sev-Debug/build/gam-custom/lib/libcuckoo``` according to the README in the same folder.
+Note that we build in ```leo-cvmrdma-install```. If you try to build it in ```leo-cvmrdma-src```the library is not copied over correctly.
