@@ -92,8 +92,7 @@ HOSTDIR="$BR_DIR/host"
 EDK2_CODE="$IMGDIR/OVMF_CODE.fd"
 DISK="$IMGDIR/disk.qcow2"
 
-# 48 GiB
-MEM=49152
+
 
 TMPDIR="$(mktemp -d)"
 cd "$TMPDIR" || { echo "Failed to cd to $TMPDIR"; exit 1; }
@@ -119,11 +118,16 @@ MACVTAP_MAC=$(cat /sys/class/net/$MACVTAP_IFACE/address | tr -s '\n' ' ')
 echo "Macvtap /dev/tap$MACVTAP_ID"
 # Put the virtio-disk and virtio-net on a PCIe slot
 
-mount -t hugetlbfs none /mnt/huge
+# mount -t hugetlbfs none /mnt/huge
+# 48 GiB
+MEM=49152
+# echo 2 > /proc/sys/vm/nr_hugepages
+
+
 
 /home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \
-  -smp 8,maxcpus=255 \
+  -smp 8,maxcpus=32 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -bios /home/fheinen/AMDSEV/snp-release-2025-05-10/usr/local/share/qemu/OVMF_CODE.fd \
   -no-reboot \
