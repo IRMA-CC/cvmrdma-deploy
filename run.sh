@@ -16,16 +16,18 @@ BUILD_TYPE="$2"
 BR="br-sev"
 
 
-PF_PCI="0000:01:00.0"
+PF_PCI="0000:01:00.2"
 NIC_ID="0000:41:00.0"
 HOST_IFACE="enp161s0f1"
 REMOTE="4"
 if [[ $VMID -eq 4 ]]; then
-  PF_PCI="0000:02:00.0"
+  PF_PCI="0000:02:00.2"
   NIC_ID="0000:85:00.0"
   HOST_IFACE="eno2"
   REMOTE="3"
 fi
+
+
 
 
 PFDIR="/sys/bus/pci/devices/$PF_PCI"
@@ -43,7 +45,7 @@ fi
 # Pass the PCI ID for the VFs to the VFIO driver
 # OK to fail if the ID is already registered
 MLX_PF_VENDOR_ID="15b3"
-MLX_PF_DEVICE_ID="1017"
+MLX_PF_DEVICE_ID="1018"
 echo $MLX_PF_VENDOR_ID $MLX_PF_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register MLX's VF PCI ID"; }
 
 
