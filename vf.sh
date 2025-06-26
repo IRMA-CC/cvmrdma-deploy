@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if ! pgrep -x opensm > /dev/null; then
+    echo "opensm not running, starting it..."
+    opensm --log_limit 32 &
+else
+    echo "opensm is already running."
+fi
+
 # These lists can probably be generated dynamically based on the system configuration,
 # but for simplicity, they are hardcoded here.
 # The address of the PFs might depend on the system configuration

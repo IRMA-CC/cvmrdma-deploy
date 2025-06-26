@@ -17,15 +17,20 @@ BR="br-sev"
 
 
 PF_PCI="0000:01:00.2"
-NIC_ID="0000:41:00.0"
-HOST_IFACE="enp161s0f1"
-REMOTE="4"
+#NIC_ID="0000:41:00.0"
+#HOST_IFACE="enp161s0f1"
+#REMOTE="4"
 if [[ $VMID -eq 4 ]]; then
   PF_PCI="0000:02:00.2"
-  NIC_ID="0000:85:00.0"
-  HOST_IFACE="eno2"
-  REMOTE="3"
+  #NIC_ID="0000:85:00.0"
+  #HOST_IFACE="eno2"
+  #REMOTE="3"
 fi
+if [[ $VMID -eq 5 ]]; then
+  PF_PCI="0000:02:00.3"
+fi
+
+
 
 
 
@@ -61,25 +66,25 @@ TARGET_PCI="$PF_PCI"
 
 
 
-if [[ -d "$IXGBE_DRIVER_DIR/$NIC_ID" ]]; then
-  echo "PCI device $NIC_ID is bound to ixgbe driver. Unbinding it"
-
-  echo "$NIC_ID" | tee "$IXGBE_DRIVER_DIR/unbind" || { exit 1; }
-fi
+#if [[ -d "$IXGBE_DRIVER_DIR/$NIC_ID" ]]; then
+#  echo "PCI device $NIC_ID is bound to ixgbe driver. Unbinding it"
+#
+# echo "$NIC_ID" | tee "$IXGBE_DRIVER_DIR/unbind" || { exit 1; }
+#fi
 
 # Pass the PCI ID for the VFs to the VFIO driver
 # OK to fail if the ID is already registered
-INTEL_NIC_VENDOR_ID="8086"
-INTEL_NIC_DEVICE_ID="1560"
-echo $INTEL_NIC_VENDOR_ID $INTEL_NIC_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register Intel NIC PCI ID"; }
+#INTEL_NIC_VENDOR_ID="8086"
+#INTEL_NIC_DEVICE_ID="1560"
+#echo $INTEL_NIC_VENDOR_ID $INTEL_NIC_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register Intel NIC PCI ID"; }
+#
+#if [[ ! -d "$VFIO_DRIVER_DIR/$NIC_ID" ]]; then
+#  echo "PCI device $NIC_ID is NOT bound to VFIO driver. Registering its ID"
+#
+#  echo "$NIC_ID" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
+#fi
 
-if [[ ! -d "$VFIO_DRIVER_DIR/$NIC_ID" ]]; then
-  echo "PCI device $NIC_ID is NOT bound to VFIO driver. Registering its ID"
-
-  echo "$NIC_ID" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
-fi
-
-TARGET_PCI_NIC="$NIC_ID"
+#TARGET_PCI_NIC="$NIC_ID"
 
 
 
@@ -109,15 +114,15 @@ echo 1 | tee /proc/sys/net/ipv6/conf/all/forwarding
 
 # Use a macvtap instead of a regular tap device
 # macvtap with qemu: https://github.com/kata-containers/runtime/issues/1808
-MACVTAP_IFACE="macvtap$VMID"
-ip link add link $HOST_IFACE name "$MACVTAP_IFACE" type macvtap mode private
-ip link set up "$MACVTAP_IFACE"
+#MACVTAP_IFACE="macvtap$VMID"
+#ip link add link $HOST_IFACE name "$MACVTAP_IFACE" type macvtap mode private
+#ip link set up "$MACVTAP_IFACE"
 
-MACVTAP_ID=$(cat /sys/class/net/$MACVTAP_IFACE/ifindex | tr -s '\n' ' ')
-MACVTAP_MAC=$(cat /sys/class/net/$MACVTAP_IFACE/address | tr -s '\n' ' ')
+#MACVTAP_ID=$(cat /sys/class/net/$MACVTAP_IFACE/ifindex | tr -s '\n' ' ')
+#MACVTAP_MAC=$(cat /sys/class/net/$MACVTAP_IFACE/address | tr -s '\n' ' ')
 
 
-echo "Macvtap /dev/tap$MACVTAP_ID"
+#echo "Macvtap /dev/tap$MACVTAP_ID"
 # Put the virtio-disk and virtio-net on a PCIe slot
 
 # mount -t hugetlbfs none /mnt/huge
@@ -145,11 +150,10 @@ MEM=49152
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
   -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
-  -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
 
-
+  # -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
   # -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
   # -object memory-backend-ram,id=normal_mem,size=$((${MEM} - 4096))M,share=on \
   # -numa node,memdev=huge,nodeid=0 \
