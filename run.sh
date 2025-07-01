@@ -16,35 +16,74 @@ BUILD_TYPE="$2"
 BR="br-sev"
 
 
-PF_PCI="0000:01:00.2"
+MLX5_PCI="0000:01:00.2"
+IXGBE_PCI="0000:41:10.0"
 #NIC_ID="0000:41:00.0"
 #HOST_IFACE="enp161s0f1"
 #REMOTE="4"
-if [[ $VMID -eq 4 ]]; then
-  PF_PCI="0000:02:00.2"
+
+if [[ $VMID -ge 4 ]]; then
+
+  vf_func=$((VMID - 2))
+  if [ $vf_func -le 7 ]; then
+      # Still on device 00
+      device=0x0
+      func=$vf_func
+  else
+      # Wrap to next device
+      device=0x1
+      func=$((vf_func - 8))
+  fi
+
+  MLX5_PCI=$(printf "0000:02:%02x.%x" $device $func)
+  echo "MLX5_PCI: $MLX5_PCI"
+
+  vf_func=$(((VMID - 4) * 2))
+  if [ $vf_func -le 6 ]; then
+      # Still on device 00
+      device=0x10
+      func=$vf_func
+  else
+      # Wrap to next device
+      device=0x11
+      func=$((vf_func - 8))
+  fi
+
+  IXGBE_PCI=$(printf "0000:85:%02x.%x" $device $func)
+  echo "IXGBE_PCI: $IXGBE_PCI"
+fi
+
+#if [[ $VMID -eq 4 ]]; then
+#  MLX5_PCI="0000:02:00.2"
+#  IXGBE_PCI="0000:85:10.0"
   #NIC_ID="0000:85:00.0"
   #HOST_IFACE="eno2"
   #REMOTE="3"
-fi
-if [[ $VMID -eq 5 ]]; then
-  PF_PCI="0000:02:00.3"
-fi
+#fi
+#if [[ $VMID -eq 5 ]]; then
+#  MLX5_PCI="0000:02:00.3"
+#  IXGBE_PCI="0000:85:10.2"
+#fi
+#if [[ $VMID -eq 6 ]]; then
+#  MLX5_PCI="0000:02:00.4"
+#  IXGBE_PCI="0000:85:10.4"
+#fi
 
 
 
 
 
 
-PFDIR="/sys/bus/pci/devices/$PF_PCI"
+PFDIR="/sys/bus/pci/devices/$MLX5_PCI"
 
 MLX5_DRIVER_DIR="/sys/bus/pci/drivers/mlx5_core"
 IXGBE_DRIVER_DIR="/sys/bus/pci/drivers/ixgbe"
 VFIO_DRIVER_DIR="/sys/bus/pci/drivers/vfio-pci"
 
-if [[ -d "$MLX5_DRIVER_DIR/$PF_PCI" ]]; then
-  echo "PCI device $PF_PCI is bound to mlx driver. Unbinding it"
+if [[ -d "$MLX5_DRIVER_DIR/$MLX5_PCI" ]]; then
+  echo "PCI device $MLX5_PCI is bound to mlx driver. Unbinding it"
 
-  echo "$PF_PCI" | tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
+  echo "$MLX5_PCI" | tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
 fi
 
 # Pass the PCI ID for the VFs to the VFIO driver
@@ -55,13 +94,13 @@ echo $MLX_PF_VENDOR_ID $MLX_PF_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new
 
 
 
-if [[ ! -d "$VFIO_DRIVER_DIR/$PF_PCI" ]]; then
-  echo "PCI device $PF_PCI is NOT bound to VFIO driver. Registering its ID"
+if [[ ! -d "$VFIO_DRIVER_DIR/$MLX5_PCI" ]]; then
+  echo "PCI device $MLX5_PCI is NOT bound to VFIO driver. Registering its ID"
 
-  echo "$PF_PCI" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
+  echo "$MLX5_PCI" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
 fi
 
-TARGET_PCI="$PF_PCI"
+MLX5_TARGET_PCI="$MLX5_PCI"
 
 
 
@@ -84,6 +123,19 @@ TARGET_PCI="$PF_PCI"
 #  echo "$NIC_ID" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
 #fi
 
+#TARGET_PCI_NIC="$NIC_ID"
+
+INTEL_NIC_VENDOR_ID="8086"
+INTEL_NIC_DEVICE_ID="1515"
+echo $INTEL_NIC_VENDOR_ID $INTEL_NIC_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register Intel NIC PCI ID"; }
+
+if [[ ! -d "$VFIO_DRIVER_DIR/$IXGBE_PCI" ]]; then
+  echo "PCI device $IXGBE_PCI is NOT bound to VFIO driver. Registering its ID"
+
+  echo "$IXGBE_PCI" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
+fi
+
+IXGBE_TARGET_PCI="$IXGBE_PCI"
 #TARGET_PCI_NIC="$NIC_ID"
 
 
@@ -128,9 +180,11 @@ echo 1 | tee /proc/sys/net/ipv6/conf/all/forwarding
 # mount -t hugetlbfs none /mnt/huge
 # 48 GiB
 MEM=49152
-# echo 2 > /proc/sys/vm/nr_hugepages
+if [[ $VMID -ne 3 ]]; then
+  MEM=32768
+fi
 
-
+MEM=16384
 
 /home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \
@@ -149,13 +203,14 @@ MEM=49152
   -device virtio-blk-pci,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
-  -device vfio-pci,host=$TARGET_PCI,bus=pcie.4 \
+  -device vfio-pci,host=$MLX5_TARGET_PCI,bus=pcie.4 \
+  -device vfio-pci,host=$IXGBE_TARGET_PCI,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
-
-  # -device vfio-pci,host=$TARGET_PCI_NIC,bus=pcie.5 \
-  # -object memory-backend-file,id=huge,size=4G,mem-path=/mnt/huge,share=on \
-  # -object memory-backend-ram,id=normal_mem,size=$((${MEM} - 4096))M,share=on \
+  # -object memory-backend-file,id=huge,size=${MEM}M,mem-path=/mnt/huge,share=on \
   # -numa node,memdev=huge,nodeid=0 \
   # -numa node,memdev=normal_mem,nodeid=1 \
+  # -object memory-backend-ram,id=normal_mem,size=$((${MEM} - 4096))M,share=on \
+  # 
+
 
