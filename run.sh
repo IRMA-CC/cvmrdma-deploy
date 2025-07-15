@@ -105,11 +105,11 @@ MLX5_TARGET_PCI="$MLX5_PCI"
 
 
 
-#if [[ -d "$IXGBE_DRIVER_DIR/$NIC_ID" ]]; then
-#  echo "PCI device $NIC_ID is bound to ixgbe driver. Unbinding it"
-#
-# echo "$NIC_ID" | tee "$IXGBE_DRIVER_DIR/unbind" || { exit 1; }
-#fi
+if [[ -d "$IXGBE_DRIVER_DIR/$IXGBE_PCI" ]]; then
+  echo "PCI device $IXGBE_PCI is bound to ixgbe driver. Unbinding it"
+
+ echo "$IXGBE_PCI" | tee "$IXGBE_DRIVER_DIR/unbind" || { exit 1; }
+fi
 
 # Pass the PCI ID for the VFs to the VFIO driver
 # OK to fail if the ID is already registered
@@ -180,11 +180,11 @@ echo 1 | tee /proc/sys/net/ipv6/conf/all/forwarding
 # mount -t hugetlbfs none /mnt/huge
 # 48 GiB
 MEM=49152
-if [[ $VMID -ne 3 ]]; then
-  MEM=32768
-fi
+#if [[ $VMID -ne 3 ]]; then
+#  MEM=32768
+#fi
 
-MEM=16384
+MEM=12288
 
 /home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \

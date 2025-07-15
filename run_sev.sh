@@ -72,11 +72,18 @@ if [[ $VMID -ge 4 ]]; then
   echo "IXGBE_PCI: $IXGBE_PCI"
 fi
 
+#if [[ $VMID -ge 4 ]]; then
+#  MLX5_PCI="0000:02:00.2"
+  #IXGBE_PCI="0000:85:00.0"
+  #NIC_ID="0000:85:00.0"
+  #HOST_IFACE="eno2"
+  #REMOTE="3" 
+#fi
 
 PFDIR="/sys/bus/pci/devices/$MLX5_PCI"
 
 MLX5_DRIVER_DIR="/sys/bus/pci/drivers/mlx5_core"
-IXGBE_DRIVER_DIR="/sys/bus/pci/drivers/ixgbe"
+IXGBEVF_DRIVER_DIR="/sys/bus/pci/drivers/ixgbevf"
 VFIO_DRIVER_DIR="/sys/bus/pci/drivers/vfio-pci"
 
 if [[ -d "$MLX5_DRIVER_DIR/$MLX5_PCI" ]]; then
@@ -101,7 +108,11 @@ fi
 
 MLX5_TARGET_PCI="$MLX5_PCI"
 
-
+if [[ -d "$IXGBEVF_DRIVER_DIR/$IXGBE_PCI" ]]; then
+  echo "PCI device $IXGBE_PCI is bound to ixgbe driver. Unbinding it"
+ 
+ echo "$IXGBE_PCI" | tee "$IXGBEVF_DRIVER_DIR/unbind" || { exit 1; }
+fi
 
 INTEL_NIC_VENDOR_ID="8086"
 INTEL_NIC_DEVICE_ID="1515"
@@ -155,6 +166,7 @@ echo 1 | tee /proc/sys/net/ipv6/conf/all/forwarding
 #echo 1 >/sys/module/kvm/parameters/gmem_2m_enabled
 
 MEM=8192
+MEM=12288
 
 # Add SEV diagnostic checks
 echo "=== SEV Diagnostics before launching VM $VMID ==="

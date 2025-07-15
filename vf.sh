@@ -1,12 +1,16 @@
 #!/bin/bash
 
+modprobe vfio-pci
+mst start
+modprobe mst-pci
+mst status
+
 if ! pgrep -x opensm > /dev/null; then
     echo "opensm not running, starting it..."
     opensm --log_limit 32 &
 else
     echo "opensm is already running."
 fi
-
 
 
 # These lists can probably be generated dynamically based on the system configuration,
@@ -43,6 +47,14 @@ for ((i=0; i<${#pf_list_ixgbe[@]}; i++)); do
         echo 0 > "$device_dir/sriov_numvfs"  # Disable VFs first
         echo $num_vfs_per_pf > "$device_dir/sriov_numvfs"
     fi
+    #for ((vf=0; vf<num_vfs_per_pf; vf++)); do
+        #echo 1 > "$device_dir/virtfn$vf/enable"  # Enable the VF
+        # Generate a unique MAC address for each VF
+        # Format: 02:00:00:XX:YY:ZZ (locally administered, unicast)
+    #    mac=$(printf "02:00:00:%02x:%02x:%02x" $i $vf 0)
+    #    echo "Assigning MAC $mac to VF $vf on $pf"
+    #    ip link set "$pf" vf $vf mac $mac
+    #done
 done
 
 for ((i=0; i<${#pf_list_mlx5[@]}; i++)); do
