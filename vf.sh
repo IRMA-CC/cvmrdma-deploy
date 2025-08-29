@@ -5,21 +5,48 @@ mst start
 modprobe mst-pci
 mst status
 
-if ! pgrep -x opensm > /dev/null; then
-    echo "opensm not running, starting it..."
-    opensm --log_limit 32 &
-else
-    echo "opensm is already running."
-fi
+HOSTNAME=$(hostname)
+
+case "$HOSTNAME" in
+  sectrs-oven-server)
+    SERVER_ID=0
+    ;;
+  skyfire)
+    SERVER_ID=1
+    ;;
+  *)
+    echo "Unknown server: $HOSTNAME" >&2
+    exit 1
+    ;;
+esac
+
+echo "Server name: $HOSTNAME"
+echo "Server ID: $SERVER_ID"
+
+
+if [[ $SERVER_ID -eq 1 ]]; then
+    echo "Starting OpenSM..."
+
+    if ! pgrep -x opensm > /dev/null; then
+        echo "opensm not running, starting it..."
+        opensm --log_limit 32 &
+    else
+        echo "opensm is already running."
+    fi
+fi  
+
+
+
+
 
 
 # These lists can probably be generated dynamically based on the system configuration,
 # but for simplicity, they are hardcoded here.
 # The address of the PFs might depend on the system configuration
 # GUID values just need to be unique
-pf_list_mlx5=("mlx5_0" "mlx5_2")
-pf_list_ixgbe=("enp65s0" "enp133s0")
-num_vfs_per_pf=8
+pf_list_mlx5=("mlx5_0" "mlx5_1")
+pf_list_ixgbe=("enp133s0")
+num_vfs_per_pf=4
 
 #num_vms=4
 
@@ -66,55 +93,65 @@ for ((i=0; i<${#pf_list_mlx5[@]}; i++)); do
     echo 0 > "$device_dir/sriov_numvfs"  # Disable VFs first
     echo $num_vfs_per_pf > "$device_dir/sriov_numvfs"
 
-    for ((vf=0; vf<num_vfs_per_pf; vf++)); do
-        echo "Configuring VF $vf for PF $pf"
+    if [[ $i -le 0 ]]; then
 
-        guid_node=$(printf "00:00:00:00:%02x:%02x:01:00" $((i+1)) $((vf+2)))
-        guid_port=$(printf "00:00:00:00:%02x:%02x:02:00" $((i+1)) $((vf+2)))
-        
+        for ((vf=0; vf<num_vfs_per_pf; vf++)); do
+            echo "Configuring VF $vf for PF $pf"
 
-        vf_func=$((vf + 2))
-        if [ $vf_func -le 7 ]; then
-            # Still on device 00
-            device=0
-            func=$vf_func
-        else
-            # Wrap to next device
-            device=1
-            func=$((vf_func - 8))
-        fi
-        
-        address=$(printf "0000:%02x:%02x.%x" $((i+1)) $device $func)
+            # guid_node=$(printf "00:00:00:00:%02x:%02x:01:00" $((i+1)) $((vf+2)))
+            # guid_port=$(printf "00:00:00:00:%02x:%02x:02:00" $((i+1)) $((vf+2)))
 
-        echo "GUID Node: $guid_node"
-        echo "GUID Port: $guid_port"
-        echo "PCI Address: $address"
+            guid_node=$(printf "00:00:00:%02x:%02x:%02x:01:00" "$SERVER_ID" "$((i+1))" "$((vf+2))")
+            guid_port=$(printf "00:00:00:%02x:%02x:%02x:02:00" "$SERVER_ID" "$((i+1))" "$((vf+2))")
+            
 
-        # unbind the VF from the mlx5_core driver first, otherwise we cannot set the GUIDs
-        echo $address > /sys/bus/pci/drivers/mlx5_core/unbind
-        echo $guid_node > "$device_dir/sriov/$vf/node"
-        echo $guid_port > "$device_dir/sriov/$vf/port"
-        # IT is important to set the policy to "Up" after setting the GUIDs
-        # otherwise the GUIDs will reamin in the down state
-        echo "Up" > "$device_dir/sriov/$vf/policy"
+            vf_func=$((vf + 2))
+            if [ $vf_func -le 7 ]; then
+                # Still on device 00
+                device=0
+                func=$vf_func
+            else
+                # Wrap to next device
+                device=1
+                func=$((vf_func - 8))
+            fi
+            
+            address=$(printf "0000:%02x:%02x.%x" $((i+1)) $device $func)
 
-        # Read back the values
-        node_val=$(sudo cat "$device_dir/sriov/$vf/node")
-        port_val=$(sudo cat "$device_dir/sriov/$vf/port")
+            echo "GUID Node: $guid_node"
+            echo "GUID Port: $guid_port"
+            echo "PCI Address: $address"
 
-        # Compare and warn if different
-        if [[ "$node_val" != "$guid_node" ]]; then
-            echo "WARNING: node GUID mismatch for $pf VF $vf (set: $guid_node, read: $node_val)"
-        fi
-        if [[ "$port_val" != "$guid_port" ]]; then
-            echo "WARNING: port GUID mismatch for $pf VF $vf (set: $guid_port, read: $port_val)"
-        fi
+            # unbind the VF from the mlx5_core driver first, otherwise we cannot set the GUIDs
+            echo $address > /sys/bus/pci/drivers/mlx5_core/unbind
+            echo $guid_node > "$device_dir/sriov/$vf/node"
+            echo $guid_port > "$device_dir/sriov/$vf/port"
+            # IT is important to set the policy to "Up" after setting the GUIDs
+            # otherwise the GUIDs will reamin in the down state
+            echo "Up" > "$device_dir/sriov/$vf/policy"
 
-        # Bind the VF to the mlx5_core driver afterwards
-        # this is not necessary if we start vms with the vfs
-        # but the VM script will unbind them anyway, so we bind them to make the script more universal
-        echo $address > /sys/bus/pci/drivers/mlx5_core/bind
-    done
+            # Read back the values
+            node_val=$(sudo cat "$device_dir/sriov/$vf/node")
+            port_val=$(sudo cat "$device_dir/sriov/$vf/port")
+
+            # Compare and warn if different
+            if [[ "$node_val" != "$guid_node" ]]; then
+                echo "WARNING: node GUID mismatch for $pf VF $vf (set: $guid_node, read: $node_val)"
+            fi
+            if [[ "$port_val" != "$guid_port" ]]; then
+                echo "WARNING: port GUID mismatch for $pf VF $vf (set: $guid_port, read: $port_val)"
+            fi
+
+            # Bind the VF to the mlx5_core driver afterwards
+            # this is not necessary if we start vms with the vfs
+            # but the VM script will unbind them anyway, so we bind them to make the script more universal
+            echo $address > /sys/bus/pci/drivers/mlx5_core/bind
+        done
+    fi
   fi
 done
 
+ip link set enp1s0f1v0 up
+ip link set enp1s0f1v1 up
+ip link set enp1s0f1v2 up
+ip link set enp1s0f1v3 up

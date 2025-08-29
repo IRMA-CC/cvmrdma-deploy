@@ -41,7 +41,11 @@ IXGBE_PCI="0000:41:10.0"
 #HOST_IFACE="enp161s0f1"
 #REMOTE="4"
 
+MLX5_ETH_PCI="0000:01:02.2"
+
 if [[ $VMID -ge 4 ]]; then
+
+  MLX5_ETH_PCI="0000:02:02.2"
 
   vf_func=$((VMID - 2))
   if [ $vf_func -le 7 ]; then
@@ -98,8 +102,6 @@ MLX_PF_VENDOR_ID="15b3"
 MLX_PF_DEVICE_ID="1018"
 echo $MLX_PF_VENDOR_ID $MLX_PF_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register MLX's VF PCI ID"; }
 
-
-
 if [[ ! -d "$VFIO_DRIVER_DIR/$MLX5_PCI" ]]; then
   echo "PCI device $MLX5_PCI is NOT bound to VFIO driver. Registering its ID"
 
@@ -107,6 +109,24 @@ if [[ ! -d "$VFIO_DRIVER_DIR/$MLX5_PCI" ]]; then
 fi
 
 MLX5_TARGET_PCI="$MLX5_PCI"
+
+if [[ -d "$MLX5_DRIVER_DIR/$MLX5_ETH_PCI" ]]; then
+  echo "PCI device $MLX5_ETH_PCI is bound to mlx driver. Unbinding it"
+
+  echo "$MLX5_ETH_PCI" | tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
+fi
+
+MLX_PF_VENDOR_ID="15b3"
+MLX_PF_DEVICE_ID="1018"
+echo $MLX_PF_VENDOR_ID $MLX_PF_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register MLX's VF PCI ID"; }
+
+if [[ ! -d "$VFIO_DRIVER_DIR/$MLX5_ETH_PCI" ]]; then
+  echo "PCI device $MLX5_ETH_PCI is NOT bound to VFIO driver. Registering its ID"
+
+  echo "$MLX5_ETH_PCI" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
+fi
+
+MLX5_ETH_TARGET_PCI="$MLX5_ETH_PCI"
 
 if [[ -d "$IXGBEVF_DRIVER_DIR/$IXGBE_PCI" ]]; then
   echo "PCI device $IXGBE_PCI is bound to ixgbe driver. Unbinding it"
@@ -165,8 +185,13 @@ echo 1 | tee /proc/sys/net/ipv6/conf/all/forwarding
 # enable 2MB THP pages, see https://github.com/AMDESE/AMDSEV/issues/225
 #echo 1 >/sys/module/kvm/parameters/gmem_2m_enabled
 
-MEM=8192
-MEM=12288
+# MEM=49152 # with 32gb cma, not sure what for?
+# MEM=32768 # works with gam and 20gb cma
+#if [[ $VMID -ne 3 ]]; then
+#  MEM=24336 # works with gam and 20gb cma
+#fi
+
+MEM=16384 # works for most default experiements with 12gb cma
 
 # Add SEV diagnostic checks
 echo "=== SEV Diagnostics before launching VM $VMID ==="
@@ -201,9 +226,32 @@ echo "Memory: ${MEM}M, CBITPOS: ${CBITPOS}"
 
 # Capture QEMU exit code and potential error
 set +e  # Don't exit on error
+
+# === AMD CCX core mapping table ===
+# CCX0: 0-3,16-19
+# CCX1: 12-15,28-31
+# CCX2: 4-7,20-23
+# CCX3: 8-11,24-27
+
+if (( VMID < 3 || VMID > 6 )); then
+  echo "⚠️  WARNING: VMID=$VMID is outside the supported range (3–6)."
+  echo "    No CCX assignment defined for this VMID!"
+  exit 1
+fi
+
+# Assign CCX group based on VMID
+case $VMID in
+  3) CCX="CCX0"; CPUS="0-3,16-19" ;;
+  4) CCX="CCX1"; CPUS="12-15,28-31" ;;
+  5) CCX="CCX2"; CPUS="4-7,20-23" ;;
+  6) CCX="CCX3"; CPUS="8-11,24-27" ;;
+esac
+
+echo "Launching VMID=$VMID pinned to $CCX (host CPUs: $CPUS)"
+taskset -c $CPUS \
 /home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \
-  -smp 4,maxcpus=32 \
+  -smp 8,maxcpus=8 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
   -machine memory-encryption=sev0,vmport=off \
   -object memory-backend-memfd,id=ram1,size=$((${MEM} + 0))M,share=true,prealloc=false \
@@ -217,14 +265,16 @@ set +e  # Don't exit on error
   -device pcie-root-port,chassis=3,id=pcie.3,addr=1c.2 \
   -device pcie-root-port,chassis=4,id=pcie.4,addr=1c.3 \
   -device pcie-root-port,chassis=5,id=pcie.5,addr=1c.4 \
+  -device pcie-root-port,chassis=6,id=pcie.6,addr=1c.5 \
   -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
   -device virtio-blk-pci,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
   -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
   -device vfio-pci,host=$MLX5_TARGET_PCI,bus=pcie.4 \
   -device vfio-pci,host=$IXGBE_TARGET_PCI,bus=pcie.5 \
+  -device vfio-pci,host=$MLX5_ETH_TARGET_PCI,bus=pcie.6 \
   -netdev user,id=vmnic \
-  -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile=
+  -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= 
 
 qemu_exit_code=$?
 set -e  # Re-enable exit on error
@@ -245,3 +295,5 @@ fi
   # -numa node,memdev=ram1,nodeid=1 \
 
 #  -netdev tap,id=hostnet0,vhost=on,ifname=$MACVTAP_IFACE,script=no,downscript=no \
+
+# 

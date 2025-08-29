@@ -77,7 +77,7 @@ fi
 PFDIR="/sys/bus/pci/devices/$MLX5_PCI"
 
 MLX5_DRIVER_DIR="/sys/bus/pci/drivers/mlx5_core"
-IXGBE_DRIVER_DIR="/sys/bus/pci/drivers/ixgbe"
+IXGBE_DRIVER_DIR="/sys/bus/pci/drivers/ixgbevf"
 VFIO_DRIVER_DIR="/sys/bus/pci/drivers/vfio-pci"
 
 if [[ -d "$MLX5_DRIVER_DIR/$MLX5_PCI" ]]; then
@@ -179,18 +179,43 @@ echo 1 | tee /proc/sys/net/ipv6/conf/all/forwarding
 
 # mount -t hugetlbfs none /mnt/huge
 # 48 GiB
-MEM=49152
 #if [[ $VMID -ne 3 ]]; then
 #  MEM=32768
 #fi
 
-MEM=12288
+#MEM=32768 # works with gam and 20gb cma
+#if [[ $VMID -ne 3 ]]; then
+#  MEM=24336 # works with gam and 20gb cma
+#fi
 
+MEM=16384 # works for most default experiements with 12gb cma
+
+# === AMD CCX core mapping table ===
+# CCX0: 0-3,16-19
+# CCX1: 12-15,28-31
+# CCX2: 4-7,20-23
+# CCX3: 8-11,24-27
+
+if (( VMID < 3 || VMID > 6 )); then
+  echo "⚠️  WARNING: VMID=$VMID is outside the supported range (3–6)."
+  echo "    No CCX assignment defined for this VMID!"
+  exit 1
+fi
+
+# Assign CCX group based on VMID
+case $VMID in
+  3) CCX="CCX0"; CPUS="0-3,16-19" ;;
+  4) CCX="CCX1"; CPUS="12-15,28-31" ;;
+  5) CCX="CCX2"; CPUS="4-7,20-23" ;;
+  6) CCX="CCX3"; CPUS="8-11,24-27" ;;
+esac
+
+echo "Launching VMID=$VMID pinned to $CCX (host CPUs: $CPUS)"
+taskset -c $CPUS \
 /home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64 -accel kvm -machine q35 \
   -cpu EPYC-v4,+vaes,+avx512f \
-  -smp 8,maxcpus=32 \
+  -smp 8,maxcpus=8 \
   -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
-  -bios /home/fheinen/AMDSEV/snp-release-2025-05-10/usr/local/share/qemu/OVMF_CODE.fd \
   -no-reboot \
   -nographic \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
@@ -207,6 +232,12 @@ MEM=12288
   -device vfio-pci,host=$IXGBE_TARGET_PCI,bus=pcie.5 \
   -netdev user,id=vmnic \
   -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= \
+  # -object memory-backend-ram,size=${MEM}M,id=m0 \
+  # -numa node,memdev=m0,cpus=0,nodeid=0 \
+#       
+
+#   -bios /home/fheinen/AMDSEV/snp-release-2025-05-10/usr/local/share/qemu/OVMF_CODE.fd \
+
   # -object memory-backend-file,id=huge,size=${MEM}M,mem-path=/mnt/huge,share=on \
   # -numa node,memdev=huge,nodeid=0 \
   # -numa node,memdev=normal_mem,nodeid=1 \

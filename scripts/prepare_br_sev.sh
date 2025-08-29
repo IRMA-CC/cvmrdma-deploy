@@ -20,7 +20,9 @@ cat <<EOF > "$BR_BUILD/local.mk"
 LINUX_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-linux")"
 RDMA_CORE_CVMRDMA_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-rdma-core")"
 RDMA_CORE_CVMRDMA_SRC_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-rdma-core")"
+CVMRDMA_MANAGER_OVERRIDE_SRCDIR="$(realpath "$SOURCE_DIR/cvmrdma-manager")"
 EOF
+
 
 
 if [[ $BUILD_TYPE = "Debug" ]]; then
