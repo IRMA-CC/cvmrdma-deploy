@@ -16,7 +16,7 @@ BUILD_TYPE="$2"
 BR="br-sev"
 
 MLX5_PCI="0000:01:00.2"
-#MLX5_ETH_PCI="0000:01:02.2"
+MLX5_ETH_PCI="0000:01:02.2"
 IXGBE_PCI="0000:85:10.0"
 
 if [[ $VMID -ge 4 ]]; then
@@ -84,6 +84,12 @@ if [[ ! -d "$VFIO_DRIVER_DIR/$MLX5_PCI" ]]; then
 fi
 
 MLX5_TARGET_PCI="$MLX5_PCI"
+
+if [[ -d "$MLX5_DRIVER_DIR/$MLX5_ETH_PCI" ]]; then
+  echo "PCI device $MLX5_ETH_PCI is bound to mlx driver. Unbinding it"
+
+  echo "$MLX5_ETH_PCI" | tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
+fi
 
 MLX_PF_VENDOR_ID="15b3"
 MLX_PF_DEVICE_ID="1018"
