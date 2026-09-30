@@ -193,9 +193,8 @@ taskset -c $CPUS \
   -bios /home/fheinen/AMDSEV/snp-release-2025-05-10/usr/local/share/qemu/OVMF_CODE.fd \
   -no-reboot \
   -display none \
-  -device virtio-serial \
-  -chardev stdio,id=char0,mux=on,signal=off \
-  -device virtconsole,chardev=char0,name=main \
+  -nographic \
+  -serial mon:stdio \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
   -device pcie-root-port,chassis=2,id=pcie.2,addr=1c.1 \
   -device pcie-root-port,chassis=3,id=pcie.3,addr=1c.2 \

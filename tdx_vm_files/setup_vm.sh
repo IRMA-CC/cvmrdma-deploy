@@ -1,23 +1,10 @@
 #!/bin/bash
 
+export LD_LIBRARY_PATH="/home/ubuntu/mnt/cvmrdma-rdma-core/build/lib:$LD_LIBRARY_PATH"
+
+
 PRIVFILE="privkeys.txt"
 PUBFILE="pubkeys.txt"
-
-wait_for_iface() {
-    local iface="$1"
-    local timeout_sec="${2:-15}"
-    local i
-
-    for ((i=0; i<timeout_sec; i++)); do
-        if ip link show "$iface" >/dev/null 2>&1; then
-            return 0
-        fi
-        sleep 1
-    done
-
-    echo "Error: Timed out waiting for interface $iface" >&2
-    return 1
-}
 
 get_key() {
     # vm's start with 3, so we subtract 2 to get the correct line number
@@ -70,8 +57,6 @@ for vm in "${all_vms[@]}"; do
     fi
 done
 
-
-
 # ip link set up dev eth0
 # ip addr add 10.0.2.15/24 dev eth0
 # ip route add default via 10.0.2.2 
@@ -79,7 +64,14 @@ done
 
 echo "Setup enp6s0"
 
+# ip addr add 192.168.122.3/24 dev enp6s0
+# ip link set dev enp6s0 address 52:54:00:00:00:03
+
+# ip addr add 192.168.122.4/24 dev enp6s0
+# ip link set dev enp6s0 address 52:54:00:00:00:04
+
 ip addr add 192.168.122.${vm_id}/24 dev enp6s0
+ip link set dev enp6s0 address 52:54:00:00:00:0${vm_id}
 ip link set up enp6s0
 ip link set dev enp6s0 mtu 1500
 
@@ -89,17 +81,17 @@ echo "Setup enp5s0"
 # we need to use a specific driver for VFs
 modprobe ixgbevf
 ip addr add 192.10.0.${vm_id}/24 dev enp5s0
+ip link set dev enp5s0 address 52:54:00:00:00:1${vm_id}
 ip link set up enp5s0
 ip link set dev enp5s0 mtu 9710
 
 echo "Setup ibp4s0"
 
 modprobe ib_ipoib
-wait_for_iface ibp4s0 20 || { [[ "${BASH_SOURCE[0]}" != "$0" ]] && return 1 || exit 1; }
 ip addr add 10.1.1.${vm_id}/24 dev ibp4s0
 ip link set up ibp4s0
-# echo connected > /sys/class/net/ibp4s0/mode
-# echo 65400 > /sys/class/net/ibp4s0/mtu
+echo connected > /sys/class/net/ibp4s0/mode
+echo 65400 > /sys/class/net/ibp4s0/mtu
 
 echo "Setup wg0, wg1, wg2"
 
@@ -164,15 +156,4 @@ export CVMRDMA_BIND_ADDR="*:3456"
 export CVMRDMA_AEAD="aegis128x4"
 export CVMRDMA_SHARED_KEY="2dcfa4058886bc0d5f9bfaded6c4b9767da3841ca83ee46f16a616aa5cd9494d"
 
-# backwards compatibility
-if [[ $vm_id -eq 3 ]]; then
-    export CVMRDMA_REMOTE_ADDR="10.0.0.4:3456"
-fi 
-
-if [[ $vm_id -eq 4 ]]; then
-    export CVMRDMA_REMOTE_ADDR="10.0.0.3:3456"
-fi 
-
 /home/ubuntu/mnt/cvmrdma-manager/cvmrdma_manager &
-
-#opensm &

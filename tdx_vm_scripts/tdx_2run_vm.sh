@@ -23,13 +23,9 @@ for arg in "$@"; do
   fi
 done
 
-MLX5_PCI="0000:17:00.2"
-MLX5_ETH_PCI="0000:17:02.2"
-IXGBE_PCI="0000:c7:10.0"
+if [[ $VMID -ge 2 ]]; then
 
-if [[ $VMID -ge 4 ]]; then
-
-  echo "VMID >=4 to large, exiting"
+  echo "VMID >=2 to large, exiting"
   exit 1
 fi
 
@@ -43,6 +39,10 @@ case "$HOSTNAME" in
     TurboDieselXylophone)
       DEFAULT_DIR="/home/fheinen/"
     ;;
+    sectrs-tripledamagexray)
+      DEFAULT_DIR="/home/ubuntu/Documents/"
+      VMID=1
+    ;;
     *)
         exit 1
         ;;
@@ -52,16 +52,27 @@ TMPDIR="$DEFAULT_DIR/cvmrdma_vm_tmpdir_$VMID"
 mkdir -p "$TMPDIR"
 
 ## adjust PCI addresses based on VMID
-VMID_ADD_2=$((VMID + 2))
-MLX5_PCI=$(printf "0000:17:00.%x" $VMID_ADD_2)
-echo "MLX5_PCI: $MLX5_PCI"
+# VMID_ADD_2=$((VMID + 2))
+# MLX5_PCI=$(printf "0000:17:00.%x" $VMID_ADD_2)
+# echo "MLX5_PCI: $MLX5_PCI"
 
-MLX5_ETH_PCI=$(printf "0000:17:02.%x" $VMID_ADD_2)
-echo "MLX5_ETH_PCI: $MLX5_ETH_PCI"
+# MLX5_ETH_PCI=$(printf "0000:17:02.%x" $VMID_ADD_2)
+# echo "MLX5_ETH_PCI: $MLX5_ETH_PCI"
 
-VMID_TIMES_2=$((VMID * 2))
-IXGBE_PCI=$(printf "0000:c7:10.%x" $VMID_TIMES_2)
-echo "IXGBE_PCI: $IXGBE_PCI"
+# VMID_TIMES_2=$((VMID * 2))
+# IXGBE_PCI=$(printf "0000:c7:10.%x" $VMID_TIMES_2)
+# echo "IXGBE_PCI: $IXGBE_PCI"
+
+MLX5_PCI="0000:17:00.2"
+MLX5_ETH_PCI="0000:17:02.2"
+IXGBE_PCI="0000:43:10.0"
+
+#if [[ $VMID -eq 0 ]]; then
+#  MLX5_PCI="0000:c7:00.2"
+#  MLX5_ETH_PCI="0000:c7:02.2"
+#  IXGBE_PCI="0000:71:10.2"
+#fi
+
 
 ## unbind devices from their current drivers and bind to vfio-pci
 PFDIR="/sys/bus/pci/devices/$MLX5_PCI"
@@ -136,8 +147,22 @@ IMGDIR="$BR_DIR/images"
 TDX_DIR="$DEFAULT_DIR/tdx_data"
 TDX_MOUNT_DIR="$DEFAULT_DIR/leo-cvmrdma-src"
 
-DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v2.img"
+DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
 SEED="$TDX_DIR/seed-root-autologin.img"
+
+BOOT_MAIN_DISK=0
+
+if [[ $BOOT_MAIN_DISK -eq 1 ]]; then
+  THIS_DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
+  THIS_SEED="$TDX_DIR/seed-root-autologin.img"
+else 
+  mkdir -p "VMID_tmp_$VMID"
+  THIS_DISK="VMID_tmp_$VMID/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
+  THIS_SEED="VMID_tmp_$VMID/seed-root-autologin.img"
+
+  cp "$DISK" "$THIS_DISK"
+  cp "$SEED" "$THIS_SEED"
+fi
 
 # THIS_DISK="$TMPDIR/disk.qcow2"
 
@@ -204,24 +229,27 @@ echo "Using MLX5: $MLX5_TARGET_PCI, IXGBE: $IXGBE_TARGET_PCI"
 # Capture QEMU exit code and potential error
 set +e  # Don't exit on error
 
+# /usr/bin/qemu-system-x86_64 \
+
 TASKSET_CMD=""
 $TASKSET_CMD \
 /usr/bin/qemu-system-x86_64 \
   -accel kvm \
-  -cpu host,enforce,+aes,+avx,+avx2,+vaes,+avx512f,+xsave,+xsaveopt,+xsavec,+xgetbv1 \
+  -cpu host \
   -object memory-backend-ram,id=mem0,size=${MEM}M \
   -machine q35,kernel_irqchip=split,memory-backend=mem0 \
   -m ${MEM}M \
   -smp 2 \
+  -bios /usr/share/ovmf/OVMF.fd \
   -nographic \
   -serial mon:stdio \
   -nodefaults \
   -vga none \
   -netdev user,id=vmnic \
   -device virtio-net-pci,netdev=vmnic \
-  -drive file=$DISK,if=none,id=virtio-disk0,format=qcow2 \
+  -drive file=$THIS_DISK,if=none,id=virtio-disk0,format=qcow2 \
   -device virtio-blk-pci,drive=virtio-disk0 \
-  -drive file=$SEED,if=none,id=seed-disk,format=raw \
+  -drive file=$THIS_SEED,if=none,id=seed-disk,format=raw \
   -device virtio-blk-pci,drive=seed-disk \
   -device virtio-serial \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \

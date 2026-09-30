@@ -38,7 +38,7 @@ fi
 
 
 # These lists can probably be generated dynamically based on the system configuration,
-# but for simplicity, they are hardcoded here.
+# but for simplicity, they are hardc doded here.
 # The address of the PFs might depend on the system configuration
 # GUID values just need to be unique
 pf_list_mlx5=("mlx5_0" "mlx5_1")

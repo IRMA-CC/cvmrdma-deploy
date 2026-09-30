@@ -23,13 +23,9 @@ for arg in "$@"; do
   fi
 done
 
-MLX5_PCI="0000:17:00.2"
-MLX5_ETH_PCI="0000:17:02.2"
-IXGBE_PCI="0000:c7:10.0"
+if [[ $VMID -ge 2 ]]; then
 
-if [[ $VMID -ge 4 ]]; then
-
-  echo "VMID >=4 to large, exiting"
+  echo "VMID >=2 to large, exiting"
   exit 1
 fi
 
@@ -43,6 +39,10 @@ case "$HOSTNAME" in
     TurboDieselXylophone)
       DEFAULT_DIR="/home/fheinen/"
     ;;
+    sectrs-tripledamagexray)
+      DEFAULT_DIR="/home/ubuntu/Documents/"
+      VMID=1
+    ;;
     *)
         exit 1
         ;;
@@ -51,78 +51,7 @@ esac
 TMPDIR="$DEFAULT_DIR/cvmrdma_vm_tmpdir_$VMID"
 mkdir -p "$TMPDIR"
 
-## adjust PCI addresses based on VMID
-VMID_ADD_2=$((VMID + 2))
-MLX5_PCI=$(printf "0000:17:00.%x" $VMID_ADD_2)
-echo "MLX5_PCI: $MLX5_PCI"
 
-MLX5_ETH_PCI=$(printf "0000:17:02.%x" $VMID_ADD_2)
-echo "MLX5_ETH_PCI: $MLX5_ETH_PCI"
-
-VMID_TIMES_2=$((VMID * 2))
-IXGBE_PCI=$(printf "0000:c7:10.%x" $VMID_TIMES_2)
-echo "IXGBE_PCI: $IXGBE_PCI"
-
-## unbind devices from their current drivers and bind to vfio-pci
-PFDIR="/sys/bus/pci/devices/$MLX5_PCI"
-
-MLX5_DRIVER_DIR="/sys/bus/pci/drivers/mlx5_core"
-IXGBEVF_DRIVER_DIR="/sys/bus/pci/drivers/ixgbevf"
-VFIO_DRIVER_DIR="/sys/bus/pci/drivers/vfio-pci"
-
-if [[ -d "$MLX5_DRIVER_DIR/$MLX5_PCI" ]]; then
-  echo "PCI device $MLX5_PCI is bound to mlx driver. Unbinding it"
-
-  echo "$MLX5_PCI" | tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
-fi
-
-# Pass the PCI ID for the VFs to the VFIO driver
-# OK to fail if the ID is already registered
-MLX_PF_VENDOR_ID="15b3"
-MLX_PF_DEVICE_ID="1018"
-echo $MLX_PF_VENDOR_ID $MLX_PF_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register MLX's VF PCI ID"; }
-
-if [[ ! -d "$VFIO_DRIVER_DIR/$MLX5_PCI" ]]; then
-  echo "PCI device $MLX5_PCI is NOT bound to VFIO driver. Registering its ID"
-
-  echo "$MLX5_PCI" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
-fi
-
-MLX5_TARGET_PCI="$MLX5_PCI"
-
-if [[ -d "$MLX5_DRIVER_DIR/$MLX5_ETH_PCI" ]]; then
-  echo "PCI device $MLX5_ETH_PCI is bound to mlx driver. Unbinding it"
-
-  echo "$MLX5_ETH_PCI" | tee "$MLX5_DRIVER_DIR/unbind" || { exit 1; }
-fi
-MLX_PF_VENDOR_ID="15b3"
-MLX_PF_DEVICE_ID="1018"
-echo $MLX_PF_VENDOR_ID $MLX_PF_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register MLX's VF PCI ID"; }
-
-if [[ ! -d "$VFIO_DRIVER_DIR/$MLX5_ETH_PCI" ]]; then
-  echo "PCI device $MLX5_ETH_PCI is NOT bound to VFIO driver. Registering its ID"
-
-  echo "$MLX5_ETH_PCI" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
-fi
-MLX5_ETH_TARGET_PCI="$MLX5_ETH_PCI"
-
-if [[ -d "$IXGBEVF_DRIVER_DIR/$IXGBE_PCI" ]]; then
-  echo "PCI device $IXGBE_PCI is bound to ixgbe driver. Unbinding it"
- 
- echo "$IXGBE_PCI" | tee "$IXGBEVF_DRIVER_DIR/unbind" || { exit 1; }
-fi
-
-INTEL_NIC_VENDOR_ID="8086"
-INTEL_NIC_DEVICE_ID="1515"
-echo $INTEL_NIC_VENDOR_ID $INTEL_NIC_DEVICE_ID | tee /sys/bus/pci/drivers/vfio-pci/new_id || { echo "WARN: failed to register Intel NIC PCI ID"; }
-
-if [[ ! -d "$VFIO_DRIVER_DIR/$IXGBE_PCI" ]]; then
-  echo "PCI device $IXGBE_PCI is NOT bound to VFIO driver. Registering its ID"
-
-  echo "$IXGBE_PCI" | tee "$VFIO_DRIVER_DIR/bind" || { exit 1; }
-fi
-
-IXGBE_TARGET_PCI="$IXGBE_PCI"
 
 
 
@@ -136,8 +65,22 @@ IMGDIR="$BR_DIR/images"
 TDX_DIR="$DEFAULT_DIR/tdx_data"
 TDX_MOUNT_DIR="$DEFAULT_DIR/leo-cvmrdma-src"
 
-DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v2.img"
+DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
 SEED="$TDX_DIR/seed-root-autologin.img"
+
+BOOT_MAIN_DISK=0
+
+if [[ $BOOT_MAIN_DISK -eq 1 ]]; then
+  THIS_DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
+  THIS_SEED="$TDX_DIR/seed-root-autologin.img"
+else 
+  mkdir -p "VMID_tmp_$VMID"
+  THIS_DISK="VMID_tmp_$VMID/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
+  THIS_SEED="VMID_tmp_$VMID/seed-root-autologin.img"
+
+  cp "$DISK" "$THIS_DISK"
+  cp "$SEED" "$THIS_SEED"
+fi
 
 # THIS_DISK="$TMPDIR/disk.qcow2"
 
@@ -190,16 +133,11 @@ fi
 echo "VFIO devices in use:"
 ls /sys/bus/pci/drivers/vfio-pci/ | grep "0000:" | wc -l
 
-echo "Checking PCI device availability:"
-echo "MLX5 device $MLX5_TARGET_PCI exists: $([ -d "/sys/bus/pci/devices/$MLX5_TARGET_PCI" ] && echo "YES" || echo "NO")"
-echo "IXGBE device $IXGBE_TARGET_PCI exists: $([ -d "/sys/bus/pci/devices/$IXGBE_TARGET_PCI" ] && echo "YES" || echo "NO")"
-
 echo "=== End Diagnostics ==="
 
 
 
 echo "Starting QEMU with TDX for VM $VMID..."
-echo "Using MLX5: $MLX5_TARGET_PCI, IXGBE: $IXGBE_TARGET_PCI"
 
 # Capture QEMU exit code and potential error
 set +e  # Don't exit on error
@@ -223,11 +161,12 @@ $TASKSET_CMD \
   -vga none \
   -netdev user,id=vmnic \
   -device virtio-net-pci,netdev=vmnic \
-  -drive file=$DISK,if=none,id=virtio-disk0,format=qcow2 \
+  -drive file=$THIS_DISK,if=none,id=virtio-disk0,format=qcow2 \
   -device virtio-blk-pci,drive=virtio-disk0 \
-  -drive file=$SEED,if=none,id=seed-disk,format=raw \
+  -drive file=$THIS_SEED,if=none,id=seed-disk,format=raw \
   -device virtio-blk-pci,drive=seed-disk \
   -device virtio-serial \
+  -fw_cfg name=opt/myvalue,string=42 \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
   -device pcie-root-port,chassis=2,id=pcie.2,addr=1c.1 \
   -device pcie-root-port,chassis=3,id=pcie.3,addr=1c.2 \
@@ -235,10 +174,7 @@ $TASKSET_CMD \
   -device pcie-root-port,chassis=5,id=pcie.5,addr=1c.4 \
   -device pcie-root-port,chassis=6,id=pcie.6,addr=1c.5 \
   -fsdev local,path=$TDX_MOUNT_DIR,security_model=passthrough,id=p9share \
-  -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
-  -device vfio-pci,host=$MLX5_TARGET_PCI,bus=pcie.4 \
-  -device vfio-pci,host=$IXGBE_TARGET_PCI,bus=pcie.5 \
-  -device vfio-pci,host=$MLX5_ETH_TARGET_PCI,bus=pcie.6 \
+  -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3
 
 qemu_exit_code=$?
 set -e  # Re-enable exit on error

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+echo "-----------------------------------"
+echo "WARNING: There exists a more up to date version of this script in tdx_vm_scripts in the form of tdx_adv_vf.sh, which is"
+echo "independent of pci addresess. You only need to adapt the server names, so the script knows which server should run opensm."
+echo "-----------------------------------"
+
 modprobe vfio-pci
 mst start
 modprobe mst-pci

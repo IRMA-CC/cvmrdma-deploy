@@ -8,8 +8,10 @@ import sys
 import subprocess
 import asyncio.subprocess
 
+#("xray", "/home/ubuntu/Documents/leo-cvmrdma-src", "/home/ubuntu/Documents/leo-cvmrdma-install/br-sev-Release/images"),
 HOSTS = [
-    ("leafblower", "znver3")
+    # ("leafblower", "/home/fheinen/data/leo-cvmrdma-src", "/home/fheinen/data/leo-cvmrdma-install/br-sev-Release/images"),
+    # ("turbo", "/home/fheinen/leo-cvmrdma-src", "/home/fheinen/leo-cvmrdma-install/br-sev-Release/images"),    
 ]
 
 # SSH control dir
@@ -67,13 +69,13 @@ cd {build_path} || exit;
 files = ["disk.qcow2", "OVMF_CODE.fd"]
 async def sync_to_host(host_spec):
     """Sync source code and built artifacts directly to remote host"""
-    host, arch = host_spec
+    host, dst_dir, dst_images = host_spec
     ssh_ctl = ctl / "%L-%r@%h:%p"
     # srcdir = Path("leo-cvmrdma-src")
-    dst_dir = "/home/fheinen/data/leo-cvmrdma-src"
+    # dst_dir = "/home/fheinen/data/leo-cvmrdma-src"
     
     src_images = "/home/fheinen/leo-cvmrdma-install/br-sev-Release/images"
-    dst_images = "/home/fheinen/data/leo-cvmrdma-install/br-sev-Release/images"
+    # dst_images = "/home/fheinen/data/leo-cvmrdma-install/br-sev-Release/images"
 
     # Start SSH session to destination
     print(f"[{host}] Start ssh session")

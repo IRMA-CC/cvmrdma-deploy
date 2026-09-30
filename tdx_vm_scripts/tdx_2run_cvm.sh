@@ -1,26 +1,5 @@
 #!/usr/bin/env bash
 set -u
-
-get_cbitpos() {
-	modprobe cpuid
-	#
-	# Get C-bit position directly from the hardware
-	#   Reads of /dev/cpu/x/cpuid have to be 16 bytes in size
-	#     and the seek position represents the CPUID function
-	#     to read.
-	#   The skip parameter of DD skips ibs-sized blocks, so
-	#     can't directly go to 0x8000001f function (since it
-	#     is not a multiple of 16). So just start at 0x80000000
-	#     function and read 32 functions to get to 0x8000001f
-	#   To get to EBX, which contains the C-bit position, skip
-	#     the first 4 bytes (EAX) and then convert 4 bytes.
-	#
-
-	EBX=$(dd if=/dev/cpu/0/cpuid ibs=16 count=32 skip=134217728 | tail -c 16 | od -An -t u4 -j 4 -N 4 | sed -re 's|^ *||')
-	CBITPOS=$((EBX & 0x3f))
-}
-
-
 set -x
 
 
@@ -44,13 +23,9 @@ for arg in "$@"; do
   fi
 done
 
-MLX5_PCI="0000:01:00.2"
-MLX5_ETH_PCI="0000:01:02.2"
-IXGBE_PCI="0000:85:10.0"
+if [[ $VMID -ge 2 ]]; then
 
-if [[ $VMID -ge 4 ]]; then
-
-  echo "VMID >=4 to large, exiting"
+  echo "VMID >=2 to large, exiting"
   exit 1
 fi
 
@@ -61,12 +36,13 @@ DEFAULT_DIR=""
 
 
 case "$HOSTNAME" in
-    skyfire)
-        DEFAULT_DIR="/home/fheinen/"
-        ;;
-    sectrs-oven-server)
-        DEFAULT_DIR="/home/fheinen/data/"
-        ;;
+    TurboDieselXylophone)
+      DEFAULT_DIR="/home/fheinen/"
+    ;;
+    sectrs-tripledamagexray)
+      DEFAULT_DIR="/home/ubuntu/Documents/"
+      VMID=1
+    ;;
     *)
         exit 1
         ;;
@@ -76,16 +52,27 @@ TMPDIR="$DEFAULT_DIR/cvmrdma_vm_tmpdir_$VMID"
 mkdir -p "$TMPDIR"
 
 ## adjust PCI addresses based on VMID
-VMID_ADD_2=$((VMID + 2))
-MLX5_PCI=$(printf "0000:01:00.%x" $VMID_ADD_2)
-echo "MLX5_PCI: $MLX5_PCI"
+# VMID_ADD_2=$((VMID + 2))
+# MLX5_PCI=$(printf "0000:17:00.%x" $VMID_ADD_2)
+# echo "MLX5_PCI: $MLX5_PCI"
 
-MLX5_ETH_PCI=$(printf "0000:01:02.%x" $VMID_ADD_2)
-echo "MLX5_ETH_PCI: $MLX5_ETH_PCI"
+# MLX5_ETH_PCI=$(printf "0000:17:02.%x" $VMID_ADD_2)
+# echo "MLX5_ETH_PCI: $MLX5_ETH_PCI"
 
-VMID_TIMES_2=$((VMID * 2))
-IXGBE_PCI=$(printf "0000:85:10.%x" $VMID_TIMES_2)
-echo "IXGBE_PCI: $IXGBE_PCI"
+# VMID_TIMES_2=$((VMID * 2))
+# IXGBE_PCI=$(printf "0000:c7:10.%x" $VMID_TIMES_2)
+# echo "IXGBE_PCI: $IXGBE_PCI"
+
+MLX5_PCI="0000:17:00.2"
+MLX5_ETH_PCI="0000:17:02.2"
+IXGBE_PCI="0000:43:10.0"
+
+if [[ $VMID -eq 0 ]]; then
+  MLX5_PCI="0000:c7:00.2"
+  MLX5_ETH_PCI="0000:c7:02.2"
+  IXGBE_PCI="0000:71:10.2"
+fi
+
 
 ## unbind devices from their current drivers and bind to vfio-pci
 PFDIR="/sys/bus/pci/devices/$MLX5_PCI"
@@ -157,11 +144,29 @@ INSTALL_DIR="$DEFAULT_DIR/leo-cvmrdma-install"
 BR_DIR="$INSTALL_DIR/$BR-$BUILD_TYPE"
 IMGDIR="$BR_DIR/images"
 
-DISK="$IMGDIR/disk.qcow2"
+TDX_DIR="$DEFAULT_DIR/tdx_data"
+TDX_MOUNT_DIR="$DEFAULT_DIR/leo-cvmrdma-src"
 
-THIS_DISK="$TMPDIR/disk.qcow2"
+DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
+SEED="$TDX_DIR/seed-root-autologin.img"
 
-cp "$DISK" "$THIS_DISK"
+BOOT_MAIN_DISK=0
+
+if [[ $BOOT_MAIN_DISK -eq 1 ]]; then
+  THIS_DISK="$TDX_DIR/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
+  THIS_SEED="$TDX_DIR/seed-root-autologin.img"
+else 
+  mkdir -p "VMID_tmp_$VMID"
+  THIS_DISK="VMID_tmp_$VMID/noble-server-cloudimg-amd64_custom_kernel_v9_autostart.img"
+  THIS_SEED="VMID_tmp_$VMID/seed-root-autologin.img"
+
+  #cp "$DISK" "$THIS_DISK"
+  #cp "$SEED" "$THIS_SEED"
+fi
+
+# THIS_DISK="$TMPDIR/disk.qcow2"
+
+# cp "$DISK" "$THIS_DISK"
 
 # Enable ip forwarding
 echo 1 | tee /proc/sys/net/ipv4/ip_forward
@@ -217,67 +222,49 @@ echo "IXGBE device $IXGBE_TARGET_PCI exists: $([ -d "/sys/bus/pci/devices/$IXGBE
 echo "=== End Diagnostics ==="
 
 
-get_cbitpos
 
-echo "Starting QEMU with SEV for VM $VMID..."
+echo "Starting QEMU with TDX for VM $VMID..."
 echo "Using MLX5: $MLX5_TARGET_PCI, IXGBE: $IXGBE_TARGET_PCI"
-echo "Memory: ${MEM}M, CBITPOS: ${CBITPOS}"
 
 # Capture QEMU exit code and potential error
 set +e  # Don't exit on error
 
-# === AMD CCX core mapping table ===
-# CCX0: 0-3,16-19
-# CCX1: 12-15,28-31
-# CCX2: 4-7,20-23
-# CCX3: 8-11,24-27
+# /usr/bin/qemu-system-x86_64 \
 
-# Assign CCX group based on VMID
-case $VMID in
-  0) CCX="CCX0"; CPUS="0-3,16-19" ;;
-  1) CCX="CCX1"; CPUS="12-15,28-31" ;;
-  2) CCX="CCX2"; CPUS="4-7,20-23" ;;
-  3) CCX="CCX3"; CPUS="8-11,24-27" ;;
-esac
-
-if [[ "$USE_TASKSET" == "true" ]]; then
-  echo "Launching VMID=$VMID pinned to $CCX (host CPUs: $CPUS)"
-  TASKSET_CMD="taskset -c $CPUS"
-else
-  echo "Launching VMID=$VMID without CPU pinning"
-  TASKSET_CMD=""
-fi
-
+TASKSET_CMD=""
 $TASKSET_CMD \
-/home/fheinen/AMDSEV/qemu/build/qemu-system-x86_64 -accel kvm -machine q35 \
-  -cpu EPYC-v4,+vaes,+avx512f \
-  -smp 8,maxcpus=8 \
-  -m ${MEM}M,slots=5,maxmem=$((${MEM} + 8192))M \
-  -machine memory-encryption=sev0,vmport=off \
-  -object memory-backend-memfd,id=ram1,size=$((${MEM} + 0))M,share=true,prealloc=false \
-  -machine memory-backend=ram1 \
-  -object sev-snp-guest,id=sev0,cbitpos=${CBITPOS},reduced-phys-bits=1 \
-  -bios /home/fheinen/AMDSEV/snp-release-2025-05-15/usr/local/share/qemu/OVMF.fd \
-  -no-reboot \
-  -display none \
+/usr/bin/qemu-system-x86_64 \
+  -accel kvm \
+  -cpu host \
+  -object '{"qom-type":"tdx-guest","id":"tdx","quote-generation-socket":{"type":"vsock","cid":"2","port":"4050"}}' \
+  -object memory-backend-ram,id=mem0,size=${MEM}M \
+  -machine q35,kernel_irqchip=split,confidential-guest-support=tdx,memory-backend=mem0 \
+  -m ${MEM}M \
+  -smp 2 \
+  -bios /usr/share/ovmf/OVMF.fd \
+  -nographic \
+  -serial mon:stdio \
+  -nodefaults \
+  -vga none \
+  -netdev user,id=vmnic \
+  -device virtio-net-pci,netdev=vmnic \
+  -drive file=$THIS_DISK,if=none,id=virtio-disk0,format=qcow2 \
+  -device virtio-blk-pci,drive=virtio-disk0 \
+  -drive file=$THIS_SEED,if=none,id=seed-disk,format=raw \
+  -device virtio-blk-pci,drive=seed-disk \
   -device virtio-serial \
-  -chardev stdio,id=char0,mux=on,signal=off \
-  -device virtconsole,chardev=char0,name=main \
+  -fw_cfg name=opt/myvalue,string=42 \
   -device pcie-root-port,chassis=1,id=pcie.1,addr=1c.0,multifunction=on \
   -device pcie-root-port,chassis=2,id=pcie.2,addr=1c.1 \
   -device pcie-root-port,chassis=3,id=pcie.3,addr=1c.2 \
   -device pcie-root-port,chassis=4,id=pcie.4,addr=1c.3 \
   -device pcie-root-port,chassis=5,id=pcie.5,addr=1c.4 \
   -device pcie-root-port,chassis=6,id=pcie.6,addr=1c.5 \
-  -drive format=qcow2,id=hda,if=none,file=$THIS_DISK \
-  -device virtio-blk-pci,bus=pcie.1,drive=hda,bootindex=1,disable-legacy=on,iommu_platform=true \
-  -fsdev local,path=$INSTALL_DIR,security_model=mapped-xattr,id=p9share \
+  -fsdev local,path=$TDX_MOUNT_DIR,security_model=passthrough,id=p9share \
   -device virtio-9p-pci,fsdev=p9share,mount_tag=p9share,bus=pcie.3 \
-  -device vfio-pci,host=$MLX5_TARGET_PCI,bus=pcie.4 \
-  -device vfio-pci,host=$IXGBE_TARGET_PCI,bus=pcie.5 \
-  -device vfio-pci,host=$MLX5_ETH_TARGET_PCI,bus=pcie.6 \
-  -netdev user,id=vmnic \
-  -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile= 
+  -device vfio-pci,host=$MLX5_TARGET_PCI,bus=pcie.4,id=mlx5 \
+  -device vfio-pci,host=$IXGBE_TARGET_PCI,bus=pcie.5,id=ixgbe \
+  # -device vfio-pci,host=$MLX5_ETH_TARGET_PCI,bus=pcie.6,id=mlx5_eth \
 
 qemu_exit_code=$?
 set -e  # Re-enable exit on error
@@ -299,4 +286,4 @@ fi
 
 #  -netdev tap,id=hostnet0,vhost=on,ifname=$MACVTAP_IFACE,script=no,downscript=no \
 
-#   
+#   sudo mount -t 9p -o trans=virtio,version=9p2000.L p9share /home/ubuntu/mnt
