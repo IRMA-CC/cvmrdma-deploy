@@ -100,10 +100,10 @@ Here is a quick explanation of each repository:
 #### Downloading the toolchain
 
 The Buildroot project will assume that an existing toolchain has been setup at `${HOME}/leo-cvmrdma-install/toolchain-x86-64-v3`.
-`deploy_local_sev.py` will download the toolchain for us and then sync it to the other host. This host needs to be specified in deploy_local_sev.py and the local host needs ssh access to the remote host.
+`deploy_local.py` will download the toolchain for us and then sync it to the other host. This host needs to be specified in deploy_local.py and the local host needs ssh access to the remote host.
 
 ```
-./deploy_local_sev.py -b toolchain
+./deploy_local.py -b toolchain
 ```
 TRIVIA: This downloads prebuilt Bootlin toolchains (from [https://toolchains.bootlin.com/releases_x86-64-v3.html](https://toolchains.bootlin.com/releases_x86-64-v3.html)). We're using x86-64-v3 psABI ([https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels](https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels)) to get a libc optimized for our hardware (rather than for the generic x64-64 platform). Our `Zen 4` machine SHOULD also work with x86-64-v4, but VMs built with this toolchain failed to boot (invalid instruction exception). Why?
 #### Building
@@ -135,18 +135,18 @@ sudo make install
 sudo ldconfig
 ```
 
-deploy_local_sev.py will build IRMA on the local host by configure the Buildroot project and then copy the source and build files to the remote all the remote host., 
+deploy_local.py will build IRMA on the local host by configure the Buildroot project and then copy the source and build files to the remote all the remote host., 
 
 Good to know: There is a legacy script deploy.py which uses a different approach for editing and deploying. It allows you to edit the source files on a different machine and then sync them to the remotes. Each remote then locally builds IRMA using buildroot. However, this file is not maintained and might be broken.
 
 ```bash
 # 1st build
 
-./deploy_local_sev.py -b br-sev -t Release
+./deploy_local.py -b br-sev -t Release
 # configures and builds in $HOME/cvmrdma-install/br-sev-Release
 
 # or enable debug symbols/assertions
-./deploy_local_sev.py -b br-sev -t Debug
+./deploy_local.py -b br-sev -t Debug
 # configures and builds in $HOME/cvmrdma-install/br-sev-Debug
 ```
 
@@ -162,10 +162,10 @@ make linux-menuconfig
 make
 ```
 
-You can rebuild packages from `deploy_local_sev.py` or directly on the host using `make <pkg>-rebuild`:
+You can rebuild packages from `deploy_local.py` or directly on the host using `make <pkg>-rebuild`:
 
 ```bash
-./deploy_local_sev.py -r linux rdma-core-cvmrdma -t Release
+./deploy_local.py -r linux rdma-core-cvmrdma -t Release
 ```
 
 #### Running
@@ -206,7 +206,7 @@ VM1> mtr 192.10.0.4
 # over Wireguard
 VM1> mtr 10.0.0.4
 
-# and run rdma programs
+# now you can run rdma programs
 ```
 
 ### Intel TDX
@@ -268,5 +268,5 @@ VM1> mtr 192.10.0.4
 # over Wireguard
 VM1> mtr 10.0.0.4
 
-# and run rdma programs
+# now you can run rdma programs
 ```

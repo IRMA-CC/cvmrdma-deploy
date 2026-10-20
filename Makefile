@@ -5,7 +5,7 @@ INSTALL_DIR:=${HOME}/leo-cvmrdma-install
 
 BUILD_TYPE=Release
 
-all: client
+all: br-sev
 
 X86_VER=3
 .PHONY: toolchain
